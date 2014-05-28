@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=metno-fetch-vaa
+GenericName=Fetch VAA Messages
+Comment=Fetches Volcanic Ash Advisory messages from a Web site.
+Exec=metno-fetch-vaa.py
+Icon=/usr/local/share/pixmaps/metno-fetch-vaa.png
+MimeType=
+ServiceTypes=
+Terminal=false
+Type=Application
+Categories=Meteorologisk
