@@ -1,0 +1,12 @@
+Source: metno-fetch-vaa
+Maintainer: David Boddie <david.boddie@met.no>
+Section: python
+Priority: optional
+Build-Depends: python, debhelper (>= 7.4.3)
+Standards-Version: 3.9.1
+
+Package: metno-fetch-vaa
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}
+Description: Tool for fetching Volcanic Ash Advisory messages from a Web site.
+

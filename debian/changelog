@@ -1,0 +1,5 @@
+metno-fetch-vaa (0.1.0-1) unstable; urgency=low
+
+  * Initial release of a tool to fetch VAA messages from a Web site.
+
+ -- David Boddie <david.boddie@met.no>  Wed, 28 May 2014 16:36:05 +0200
