@@ -8,7 +8,7 @@ setup(
     author="David Boddie",
     author_email="david.boddie@met.no",
     url="http://www.met.no/",
-    version="0.1.0",
+    version="0.3.0",
     scripts=["metno-fetch-vaa.py"],
     data_files=[("share/applications", ["share/applications/metno-fetch-vaa.desktop"]),
                 ("share/pixmaps", ["share/pixmaps/metno-fetch-vaa.png"])]
