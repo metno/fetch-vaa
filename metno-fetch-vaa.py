@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-import HTMLParser, os, sys, urllib2, urlparse
+import commands, HTMLParser, os, sys, urllib2, urlparse
 
 default_url = "http://www.meteo.fr/vaac/evaa.html"
 
@@ -57,26 +57,28 @@ class Parser(HTMLParser.HTMLParser):
 
 if __name__ == "__main__":
 
-    if not 2 <= len(sys.argv) <= 3:
-
-        sys.stderr.write("Usage: %s [URL of page containing links to VAA messages] <download directory>\n" % sys.argv[0])
+    args = sys.argv[:]
+    gui = "--gui" in args
+    if gui:
+        args.remove("--gui")
+    
+    if len(args) == 2:
+        output_dir = args[1]
+    elif len(args) == 1:
+        output_dir = os.path.join(os.getenv("HOME"), ".diana", "work")
+    else:
+        sys.stderr.write("Usage: %s [--gui] [download directory]\n" % args[0])
         sys.exit(1)
     
-    download_dir = sys.argv[-1]
-
-    if not os.path.isdir(download_dir):
-        try:
-            os.mkdir(download_dir)
-        except OSError:
-            sys.stderr.write("Failed to create the download directory: %s\n" % download_dir)
-            sys.exit(1)
+    if not os.path.isdir(output_dir):
+        text = "Download directory '%s' not found." % output_dir
+        if gui:
+            os.system('zenity --error --text="%s"' % text)
+        else:
+            sys.stderr.write(text + "\n")
+        sys.exit(1)
     
-    if len(sys.argv) == 2:
-        url = raw_input("URL [%s]: " % default_url)
-        if not url.strip():
-            url = default_url
-    else:
-        url = sys.argv[1]
+    url = default_url
     
     html = urllib2.urlopen(url).read()
     p = Parser()
@@ -87,14 +89,43 @@ if __name__ == "__main__":
     for href, text in p.anchors:
         if text.endswith("UTC"):
             vaa_url = urlparse.urljoin(url, href)
-            print "Fetching", vaa_url
-            vaa_html = urllib2.urlopen(vaa_url).read()
-            vaa_file = os.path.join(download_dir, href.split("/")[-1])
-            open(vaa_file, "w").write(vaa_html)
+            file_name = href.split("/")[-1]
 
-            os.system("./parseash.pl " + vaa_file)
+            # Process the file name to get the embedded time information.
+            # This is currently unused.
+            pieces = file_name.split(".")
+            time_str = pieces[-2]
+            
+            vaa_file = os.path.join(output_dir, file_name)
+            kml_file = os.path.join(output_dir, file_name.replace(".html", ".kml"))
+
+            # Do not download the file if we already have it.
+            if not os.path.exists(kml_file):
+                vaa_html = urllib2.urlopen(vaa_url).read()
+                open(vaa_file, "w").write(vaa_html)
+            else:
+                break
+            
+            # Convert the message in the HTML file to a KML file.
+            os.system("metno-vaa-kml " + commands.mkarg(vaa_file))
+
+            # Remove the HTML file.
+            os.remove(vaa_file)
+            
             count += 1
             if count == 10:
                 break
     
+    if count == 0:
+        text = "No new KML files retrieved."
+    elif count == 1:
+        text = "1 new KML file can be found in the '%s' directory." % output_dir
+    else:
+        text = "%i new KML files can be found in the '%s' directory." % (count, output_dir)
+    
+    if gui:
+        os.system('zenity --info --text="%s"' % text)
+    else:
+        print text
+
     sys.exit()
