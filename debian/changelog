@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.3.0-1) unstable; urgency=low
+
+  * Depend on a working metno-vaa-kml package.
+
+ -- David Boddie <david.boddie@met.no>  Fri, 30 May 2014 17:41:30 +0200
+
 metno-fetch-vaa (0.2.0-1) unstable; urgency=low
 
   * Added icon and desktop files.
