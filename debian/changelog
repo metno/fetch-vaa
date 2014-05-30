@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.2.0-1) unstable; urgency=low
+
+  * Added icon and desktop files.
+
+ -- David Boddie <david.boddie@met.no>  Fri, 30 May 2014 15:01:13 +0200
+
 metno-fetch-vaa (0.1.0-1) unstable; urgency=low
 
   * Initial release of a tool to fetch VAA messages from a Web site.
