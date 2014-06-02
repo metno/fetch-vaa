@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.4.0-1) unstable; urgency=low
+
+  * Fixed the location of the icon in the desktop file.
+
+ -- David Boddie <david.boddie@met.no>  Mon, 02 Jun 2014 15:00:53 +0200
+
 metno-fetch-vaa (0.3.0-1) unstable; urgency=low
 
   * Depend on a working metno-vaa-kml package.
