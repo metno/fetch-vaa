@@ -104,6 +104,8 @@ if __name__ == "__main__":
                 vaa_html = urllib2.urlopen(vaa_url).read()
                 open(vaa_file, "w").write(vaa_html)
             else:
+                # If we already have the file then we should also have the
+                # files that preceded it.
                 break
             
             # Convert the message in the HTML file to a KML file.
