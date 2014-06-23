@@ -104,12 +104,27 @@ class Parser(HTMLParser.HTMLParser):
                 break
 
 
-class ToulouseFetcher:
+class Fetcher:
+
+    def hasExistingFile(self, output_dir, href):
+
+        file_name = href.split("/")[-1]
+         
+        vaa_file = os.path.join(output_dir, file_name)
+        if vaa_file.endswith(".html"):
+            kml_file = file_name.replace(".html", ".kml")
+        else:
+            kml_file = file_name + ".kml"
+        
+        return os.path.exists(os.path.join(output_dir, kml_file))
+
+
+class ToulouseFetcher(Fetcher):
 
     url = "http://www.meteo.fr/vaac/evaa.html"
     number_to_fetch = 10
 
-    def fetch(self, vaaList):
+    def fetch(self, vaaList, output_dir):
     
         "Reads the messages available from the URL for the current VAA centre."
 
@@ -121,12 +136,19 @@ class ToulouseFetcher:
         count = 0
 
         for href, text, table_text in p.anchors:
+
             if text.endswith("UTC"):
+            
+                # Stop processing if we have already downloaded and converted this file.
+                if self.hasExistingFile(output_dir, href):
+                    break
+
                 # The date is encoded in the URL for the advisory.
                 info = href.split(".")
                 date = datetime.datetime.strptime(info[-2], "%Y%m%d%H%M").strftime("%Y-%m-%d %H:%M")
                 volcano = info[2].replace("_", " ")
                 item = QListWidgetItem("%s (%s)" % (date, volcano))
+                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
                 item.href = href
                 item.url = urlparse.urljoin(self.url, href)
                 vaaList.addItem(item)
@@ -136,12 +158,12 @@ class ToulouseFetcher:
                     break
 
 
-class AnchorageFetcher:
+class AnchorageFetcher(Fetcher):
 
     url = "http://vaac.arh.noaa.gov/list_vaas.php"
     number_to_fetch = 10
 
-    def fetch(self, vaaList):
+    def fetch(self, vaaList, output_dir):
     
         "Reads the messages available from the URL for the current VAA centre."
 
@@ -153,11 +175,18 @@ class AnchorageFetcher:
         count = 0
 
         for href, text, table_text in p.anchors:
+
             if text == "X" and href.split("/")[-2] == "VAA":
+            
+                # Stop processing if we have already downloaded and converted this file.
+                if self.hasExistingFile(output_dir, href):
+                    break
+
                 # The date is encoded in the associated table text.
                 date = datetime.datetime.strptime(table_text[0], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
                 volcano = table_text[1].replace("_", " ")
                 item = QListWidgetItem("%s (%s)" % (date, volcano))
+                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
                 item.href = href
                 item.url = urlparse.urljoin(self.url, href)
                 vaaList.addItem(item)
@@ -175,6 +204,9 @@ class Window(QMainWindow):
 
         self.fetchers = fetchers
         self.settings = Settings("met.no", "metno-fetch-vaa")
+        
+        self.output_dir = self.settings.value("work directory",
+                          os.path.join(os.getenv("HOME"), ".diana", "work"))
         
         contentWidget = QWidget()
         layout = QGridLayout(contentWidget)
@@ -203,16 +235,29 @@ class Window(QMainWindow):
         layout.addWidget(self.convertButton, 2, 1)
         layout.setAlignment(self.convertButton, Qt.AlignHCenter)
         
-        # Add a work log.
-        self.workLog = QPlainTextEdit()
-        self.workLog.setReadOnly(True)
-        layout.addWidget(self.workLog, 3, 0, 1, 3)
+        # Ensure that the list widgets are given enough space.
         layout.setRowStretch(1, 1)
+
+        # Add a log viewer.
+        self.logViewerWidget = QWidget()
+        logLayout = QVBoxLayout(self.logViewerWidget)
+
+        self.logViewer = QPlainTextEdit()
+        self.logViewer.setReadOnly(True)
+        hideLogButton = QPushButton(self.tr("&Hide log"))
+        hideLogButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        logLayout.addWidget(self.logViewer)
+        logLayout.addWidget(hideLogButton)
+
+        self.logViewerWidget.hide()
+        layout.addWidget(self.logViewerWidget, 3, 0, 1, 3)
 
         # Make connections.
         self.urlList.itemSelectionChanged.connect(self.updateButtons)
+        self.vaaList.itemSelectionChanged.connect(self.showLog)
         self.fetchButton.clicked.connect(self.fetchAdvisories)
         self.convertButton.clicked.connect(self.convertAdvisories)
+        hideLogButton.clicked.connect(self.logViewerWidget.hide)
         
         # Fetch the list of VAA centres.
         self.fetchVAACList()
@@ -241,10 +286,15 @@ class Window(QMainWindow):
         self.vaaList.clear()
         item = self.urlList.currentItem()
         fetcher = self.fetchers[item.name]
-        fetcher.fetch(self.vaaList)
+
+        fetcher.fetch(self.vaaList, self.output_dir)
         self.updateButtons()
         
         QApplication.restoreOverrideCursor()
+        
+        if self.vaaList.count() == 0:
+            QMessageBox.information(self, self.tr("Fetching from %1").arg(item.name),
+                self.tr("No new messages available from %1.").arg(item.name))
 
     def updateButtons(self):
     
@@ -255,11 +305,9 @@ class Window(QMainWindow):
     
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
-        output_dir = self.settings.value("work directory", os.path.join(os.getenv("HOME"), ".diana", "work"))
-        
         kml_files = []
         failed_files = []
-        self.workLog.clear()
+        self.workLog = []
         
         for i in range(self.vaaList.count()):
         
@@ -269,26 +317,21 @@ class Window(QMainWindow):
             
             file_name = href.split("/")[-1]
             
-            vaa_file = os.path.join(output_dir, file_name)
+            vaa_file = os.path.join(self.output_dir, file_name)
             if vaa_file.endswith(".html"):
-                kml_file = os.path.join(output_dir, file_name.replace(".html", ".kml"))
+                kml_file = file_name.replace(".html", ".kml")
             else:
                 kml_file = file_name + ".kml"
             
-            # Do not download the file if we already have it.
-            if not os.path.exists(kml_file):
-                vaa_content = urllib2.urlopen(url).read()
+            kml_file = os.path.join(self.output_dir, kml_file)
+            vaa_content = urllib2.urlopen(url).read()
 
-                # Wrap any non-HTML content in a <pre> element.
-                if not vaa_file.endswith(".html"):
-                    vaa_content = "<pre>\n" + vaa_content + "\n</pre>\n"
+            # Wrap any non-HTML content in a <pre> element.
+            if not vaa_file.endswith(".html"):
+                vaa_content = "<pre>\n" + vaa_content + "\n</pre>\n"
+                vaa_file += ".html"
 
-                open(vaa_file, "w").write(vaa_content)
-            else:
-                # If we already have the file then we should also have the
-                # files that were published before it and which follow it
-                # in the list.
-                break
+            open(vaa_file, "w").write(vaa_content)
             
             # Convert the message in the HTML file to a KML file.
             s = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
@@ -299,30 +342,27 @@ class Window(QMainWindow):
                 # Remove the HTML file.
                 os.remove(vaa_file)
                 kml_files.append(kml_file)
+                item.setCheckState(Qt.Checked)
 
-            self.workLog.setPlainText(self.workLog.toPlainText() + s.stdout.read())
+            self.workLog.append(s.stdout.read())
             QApplication.processEvents()
-        
-        text = ""
-        
-        count = len(kml_files)
-        if count == 0:
-            text = self.tr("No new KML files available.\n")
-        elif count == 1:
-            text = self.tr("1 new KML file can be found in the '%1' directory.\n").arg(output_dir)
-        else:
-            text = self.tr("%1 new KML files can be found in the '%2' directory.\n").arg(count).arg(output_dir)
-        
-        count = len(failed_files)
-        if count == 1:
-            text += self.tr("1 unprocessed VAA file can be found in the '%1' directory.").arg(output_dir)
-        else:
-            text += self.tr("%1 unprocessed VAA files can be found in the '%2' directory.").arg(count).arg(output_dir)
-        
-        self.workLog.setPlainText(self.workLog.toPlainText() + text)
         
         QApplication.restoreOverrideCursor()
     
+    def showLog(self):
+    
+        # Since this is called when the selection changes, and the selection
+        # changes just before the list is cleared, we can't check for the
+        # number of items in the list.
+        if len(self.vaaList.selectedItems()) == 0:
+            self.logViewerWidget.hide()
+            return
+
+        row = self.vaaList.currentRow()
+        text = self.workLog[row]
+        self.logViewer.setPlainText(text)
+        self.logViewerWidget.show()
+
     def closeEvent(self, event):
 
         self.settings.setValue("window/geometry", self.saveGeometry())
