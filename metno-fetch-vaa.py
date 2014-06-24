@@ -207,6 +207,7 @@ class Window(QMainWindow):
         
         self.output_dir = self.settings.value("work directory",
                           os.path.join(os.getenv("HOME"), ".diana", "work"))
+        self.workLog = []
         
         contentWidget = QWidget()
         layout = QGridLayout(contentWidget)
@@ -357,11 +358,13 @@ class Window(QMainWindow):
         if len(self.vaaList.selectedItems()) == 0:
             self.logViewerWidget.hide()
             return
-
+        
         row = self.vaaList.currentRow()
-        text = self.workLog[row]
-        self.logViewer.setPlainText(text)
-        self.logViewerWidget.show()
+        if 0 <= row < len(self.workLog):
+        
+            text = self.workLog[row]
+            self.logViewer.setPlainText(text)
+            self.logViewerWidget.show()
 
     def closeEvent(self, event):
 
