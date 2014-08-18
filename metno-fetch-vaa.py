@@ -287,6 +287,10 @@ class Window(QMainWindow):
         self.vaaList.clear()
         item = self.urlList.currentItem()
         fetcher = self.fetchers[item.name]
+        
+        # Create the output directory if it does not already exist.
+        if not os.path.exists(self.output_dir):
+            os.system("mkdir -p " + commands.mkarg(self.output_dir))
 
         fetcher.fetch(self.vaaList, self.output_dir)
         self.updateButtons()
