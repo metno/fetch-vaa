@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.6.1-2) unstable; urgency=low
+
+  * Updated the dependencies to fix problems with running metno-vaa-kml.
+
+ -- David Boddie <david.boddie@met.no>  Tue, 19 Aug 2014 09:33:17 +0200
+
 metno-fetch-vaa (0.6.1-1) unstable; urgency=low
 
   * Ensured that the output directory exists before trying to write to it.
