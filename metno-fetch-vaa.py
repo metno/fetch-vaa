@@ -107,6 +107,7 @@ class Parser(HTMLParser.HTMLParser):
 class Fetcher:
 
     showBusy = True
+    showInMenu = True
 
     def hasExistingFile(self, output_dir, href):
 
@@ -208,6 +209,7 @@ class LocalFileFetcher(Fetcher):
 
     returns_html = False
     showBusy = False
+    showInMenu = False
 
     def fetch(self, vaaList, output_dir):
     
@@ -280,8 +282,9 @@ class Window(QMainWindow):
         names.sort()
 
         for name in names:
-            action = fileMenu.addAction(name, self.fetchAdvisories)
-            action.name = name
+            if self.fetchers[name].showInMenu:
+                action = fileMenu.addAction(name, self.fetchAdvisories)
+                action.name = name
         
         fileMenu.addSeparator()
         fileMenu.addAction(self.tr("E&xit"), self.close, QKeySequence(QKeySequence.Quit))
@@ -316,7 +319,7 @@ class Window(QMainWindow):
 
         layout.addWidget(self.logViewer, 3, 0)
         layout.addWidget(self.showHideLogButton, 4, 0)
-        self.showHideLogViewer(self.settings.value("window/log", True))
+        self.showHideLogViewer(self.settings.value("window/log", False))
 
         # Make connections.
         self.vaaList.itemSelectionChanged.connect(self.showLog)
@@ -331,7 +334,10 @@ class Window(QMainWindow):
 
         self.setCentralWidget(contentWidget)
         self.setWindowTitle(self.tr("Fetch Volcanic Ash Advisories"))
-        self.restoreGeometry(self.settings.value("window/geometry").toByteArray())
+        if self.settings.contains("window/geometry"):
+            self.restoreGeometry(self.settings.value("window/geometry").toByteArray())
+        else:
+            self.resize(640, 480)
     
     def fetchAdvisories(self):
     
