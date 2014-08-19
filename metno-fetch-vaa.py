@@ -106,6 +106,8 @@ class Parser(HTMLParser.HTMLParser):
 
 class Fetcher:
 
+    showBusy = True
+
     def hasExistingFile(self, output_dir, href):
 
         file_name = href.split("/")[-1]
@@ -123,6 +125,7 @@ class ToulouseFetcher(Fetcher):
 
     url = "http://www.meteo.fr/vaac/evaa.html"
     number_to_fetch = 10
+    returns_html = True
 
     def fetch(self, vaaList, output_dir):
     
@@ -151,6 +154,8 @@ class ToulouseFetcher(Fetcher):
                 item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
                 item.href = href
                 item.url = urlparse.urljoin(self.url, href)
+                item.content = None
+                item.converted = False
                 vaaList.addItem(item)
 
                 count += 1
@@ -162,6 +167,7 @@ class AnchorageFetcher(Fetcher):
 
     url = "http://vaac.arh.noaa.gov/list_vaas.php"
     number_to_fetch = 10
+    returns_html = True
 
     def fetch(self, vaaList, output_dir):
     
@@ -189,11 +195,60 @@ class AnchorageFetcher(Fetcher):
                 item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
                 item.href = href
                 item.url = urlparse.urljoin(self.url, href)
+                item.content = None
+                item.converted = False
                 vaaList.addItem(item)
 
                 count += 1
                 if count == self.number_to_fetch:
                     break
+
+
+class LocalFileFetcher(Fetcher):
+
+    returns_html = False
+    showBusy = False
+
+    def fetch(self, vaaList, output_dir):
+    
+        fileName = QFileDialog.getOpenFileName(None, QApplication.translate("LocalFileFetcher", "Open VAA File"))
+        
+        if fileName.isEmpty():
+            return
+        
+        fileName = unicode(fileName)
+        
+        vaaList.clear()
+        item = QListWidgetItem(fileName)
+        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        item.href = fileName
+        item.url = urlparse.urljoin("file://", fileName)
+        item.content = None
+        item.converted = False
+        vaaList.addItem(item)
+
+
+class EditDialog(QDialog):
+
+    def __init__(self, content, parent = None):
+
+        QDialog.__init__(self, parent)
+
+        self.textEdit = QPlainTextEdit()
+        self.textEdit.setPlainText(content)
+        
+        buttonBox = QDialogButtonBox()
+        buttonBox.addButton(QDialogButtonBox.Ok)
+        buttonBox.addButton(QDialogButtonBox.Cancel)
+        
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.textEdit)
+        layout.addWidget(buttonBox)
+
+        self.setWindowTitle(self.tr("Edit Message"))
 
 
 class Window(QMainWindow):
@@ -208,60 +263,69 @@ class Window(QMainWindow):
         self.output_dir = self.settings.value("work directory",
                           os.path.join(os.getenv("HOME"), ".diana", "work"))
         self.workLog = []
+        self.converted = False
         
         contentWidget = QWidget()
         layout = QGridLayout(contentWidget)
         
-        # Create a list of available VAA centres.
-        urlLabel = QLabel(self.tr("&Advisory Centres"))
-        self.urlList = QListWidget()
-        urlLabel.setBuddy(self.urlList)
-        layout.addWidget(urlLabel, 0, 0)
-        layout.addWidget(self.urlList, 1, 0)
+        fileMenu = self.menuBar().addMenu(self.tr("&File"))
+        openFileAction = fileMenu.addAction(self.tr("&Open File..."), self.fetchAdvisories,
+            QKeySequence.Open)
+        openFileAction.name = u"Local file"
 
-        self.fetchButton = QPushButton(self.tr("&Fetch messages"))
-        self.fetchButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
-        layout.addWidget(self.fetchButton, 2, 0)
-        layout.setAlignment(self.fetchButton, Qt.AlignHCenter)
+        fileMenu.addSeparator()
+
+        # Create a list of available VAA centres in the menu.
+        names = self.fetchers.keys()
+        names.sort()
+
+        for name in names:
+            action = fileMenu.addAction(name, self.fetchAdvisories)
+            action.name = name
+        
+        fileMenu.addSeparator()
+        fileMenu.addAction(self.tr("E&xit"), self.close, QKeySequence(QKeySequence.Quit))
 
         # Create a list of downloaded advisories.
-        vaaLabel = QLabel(self.tr("&Messages"))
         self.vaaList = QListWidget()
-        vaaLabel.setBuddy(self.vaaList)
-        layout.addWidget(vaaLabel, 0, 1)
-        layout.addWidget(self.vaaList, 1, 1)
+        layout.addWidget(self.vaaList, 0, 0)
         
+        # Add a panel of buttons.
+        buttonLayout = QHBoxLayout()
+
+        self.editButton = QPushButton(self.tr("&Edit message"))
+        self.editButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        buttonLayout.addWidget(self.editButton)
+        buttonLayout.setAlignment(self.editButton, Qt.AlignHCenter)
+
         self.convertButton = QPushButton(self.tr("&Convert messages"))
         self.convertButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
-        layout.addWidget(self.convertButton, 2, 1)
-        layout.setAlignment(self.convertButton, Qt.AlignHCenter)
+        buttonLayout.addWidget(self.convertButton)
+        buttonLayout.setAlignment(self.convertButton, Qt.AlignHCenter)
+
+        layout.addLayout(buttonLayout, 1, 0)
         
         # Ensure that the list widgets are given enough space.
         layout.setRowStretch(1, 1)
 
         # Add a log viewer.
-        self.logViewerWidget = QWidget()
-        logLayout = QVBoxLayout(self.logViewerWidget)
-
         self.logViewer = QPlainTextEdit()
         self.logViewer.setReadOnly(True)
-        hideLogButton = QPushButton(self.tr("&Hide log"))
-        hideLogButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
-        logLayout.addWidget(self.logViewer)
-        logLayout.addWidget(hideLogButton)
+        self.showHideLogButton = QPushButton(self.tr("&Hide log"))
+        self.showHideLogButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
 
-        self.logViewerWidget.hide()
-        layout.addWidget(self.logViewerWidget, 3, 0, 1, 3)
+        layout.addWidget(self.logViewer, 3, 0)
+        layout.addWidget(self.showHideLogButton, 4, 0)
+        self.showHideLogViewer(self.settings.value("window/log", True))
 
         # Make connections.
-        self.urlList.itemSelectionChanged.connect(self.updateButtons)
         self.vaaList.itemSelectionChanged.connect(self.showLog)
-        self.fetchButton.clicked.connect(self.fetchAdvisories)
+        self.vaaList.itemActivated.connect(self.showLog)
+        self.vaaList.itemSelectionChanged.connect(self.updateButtons)
+        self.vaaList.itemActivated.connect(self.updateButtons)
+        self.editButton.clicked.connect(self.editMessage)
         self.convertButton.clicked.connect(self.convertAdvisories)
-        hideLogButton.clicked.connect(self.logViewerWidget.hide)
-        
-        # Fetch the list of VAA centres.
-        self.fetchVAACList()
+        self.showHideLogButton.clicked.connect(self.showHideLogViewer)
         
         self.updateButtons()
 
@@ -269,42 +333,39 @@ class Window(QMainWindow):
         self.setWindowTitle(self.tr("Fetch Volcanic Ash Advisories"))
         self.restoreGeometry(self.settings.value("window/geometry").toByteArray())
     
-    def fetchVAACList(self):
-    
-        names = self.fetchers.keys()
-        names.sort()
-
-        for name in names:
-
-            item = QListWidgetItem(name)
-            item.name = name
-            self.urlList.addItem(item)
-    
     def fetchAdvisories(self):
     
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        
         self.vaaList.clear()
-        item = self.urlList.currentItem()
-        fetcher = self.fetchers[item.name]
+        name = self.sender().name
+        fetcher = self.fetchers[name]
         
         # Create the output directory if it does not already exist.
         if not os.path.exists(self.output_dir):
             os.system("mkdir -p " + commands.mkarg(self.output_dir))
-
+        
+        if fetcher.showBusy:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+        
         fetcher.fetch(self.vaaList, self.output_dir)
+
+        self.workLog = []
+        self.converted = False
         self.updateButtons()
         
-        QApplication.restoreOverrideCursor()
+        if fetcher.showBusy:
+            QApplication.restoreOverrideCursor()
         
         if self.vaaList.count() == 0:
-            QMessageBox.information(self, self.tr("Fetching from %1").arg(item.name),
-                self.tr("No new messages available from %1.").arg(item.name))
+            QMessageBox.information(self, self.tr("Fetching from %1").arg(name),
+                self.tr("No new messages available from %1.").arg(name))
 
     def updateButtons(self):
     
-        self.fetchButton.setEnabled(self.urlList.currentItem() != None)
-        self.convertButton.setEnabled(self.vaaList.count() > 0)
+        yet_to_convert = len(filter(lambda i: not self.vaaList.item(i).converted,
+                                    range(self.vaaList.count())))
+        self.convertButton.setEnabled(yet_to_convert)
+        editable = self.vaaList.count() > 0 and self.vaaList.currentRow() != -1
+        self.editButton.setEnabled(editable)
     
     def convertAdvisories(self):
     
@@ -329,7 +390,10 @@ class Window(QMainWindow):
                 kml_file = file_name + ".kml"
             
             kml_file = os.path.join(self.output_dir, kml_file)
-            vaa_content = urllib2.urlopen(url).read()
+            if not item.content:
+                vaa_content = item.content = urllib2.urlopen(url).read()
+            else:
+                vaa_content = item.content
 
             # Wrap any non-HTML content in a <pre> element.
             if not vaa_file.endswith(".html"):
@@ -343,14 +407,27 @@ class Window(QMainWindow):
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             if s.wait() != 0:
                 failed_files.append(vaa_file)
+                item.setCheckState(Qt.Unchecked)
+                item.setIcon(QApplication.style().standardIcon(QStyle.SP_MessageBoxWarning))
             else:
                 # Remove the HTML file.
                 os.remove(vaa_file)
                 kml_files.append(kml_file)
                 item.setCheckState(Qt.Checked)
+                item.setIcon(QIcon())
+                item.converted = True
 
             self.workLog.append(s.stdout.read())
             QApplication.processEvents()
+        
+        # We have tried to convert the files.
+        self.converted = True
+
+        # Update the log viewer if it is already shown.
+        if self.logViewer.isVisible():
+            self.showLog()
+
+        self.updateButtons()
         
         QApplication.restoreOverrideCursor()
     
@@ -360,7 +437,7 @@ class Window(QMainWindow):
         # changes just before the list is cleared, we can't check for the
         # number of items in the list.
         if len(self.vaaList.selectedItems()) == 0:
-            self.logViewerWidget.hide()
+            self.logViewer.clear()
             return
         
         row = self.vaaList.currentRow()
@@ -368,11 +445,46 @@ class Window(QMainWindow):
         
             text = self.workLog[row]
             self.logViewer.setPlainText(text)
-            self.logViewerWidget.show()
+            self.showHideLogViewer(True)
+    
+    # Use a decorator to avoid receiving the signal that includes a boolean value.
+    @pyqtSlot()
+    def showHideLogViewer(self, show = None):
+    
+        if show is None:
+            show = not self.logViewer.isVisible()
+        
+        self.logViewer.setShown(show)
+        if show:
+            self.showHideLogButton.setText(self.tr("&Hide log"))
+        else:
+            self.showHideLogButton.setText(self.tr("&Show log"))
+    
+    def editMessage(self):
 
+        row = self.vaaList.currentRow()
+        item = self.vaaList.item(row)
+
+        if not item.content:
+            item.content = urllib2.urlopen(item.url).read()
+        
+        oldContent = item.content
+
+        editDialog = EditDialog(item.content[:], self)
+        editDialog.restoreGeometry(self.settings.value("editdialog/geometry").toByteArray())
+
+        if editDialog.exec_() == QDialog.Accepted:
+            item.content = unicode(editDialog.textEdit.toPlainText())
+            if oldContent != item.content:
+                item.converted = False
+
+        self.updateButtons()
+    
     def closeEvent(self, event):
 
         self.settings.setValue("window/geometry", self.saveGeometry())
+        self.settings.setValue("window/log", self.logViewer.isVisible())
+        self.settings.setValue("editdialog/geometry", self.saveGeometry())
         self.settings.sync()
 
 
@@ -381,7 +493,8 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     fetchers = {u"Toulouse VAAC": ToulouseFetcher(),
-                u"Anchorage VAAC": AnchorageFetcher()}
+                u"Anchorage VAAC": AnchorageFetcher(),
+                u"Local file": LocalFileFetcher()}
 
     window = Window(fetchers)
     window.show()
