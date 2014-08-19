@@ -21,6 +21,8 @@ import commands, datetime, HTMLParser, os, subprocess, sys, urllib2, urlparse
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+checked_dict = {False: Qt.Unchecked, True: Qt.Checked}
+
 class Settings(QSettings):
 
     """Convenience class to help read values from settings files as Python datatypes.
@@ -143,10 +145,6 @@ class ToulouseFetcher(Fetcher):
 
             if text.endswith("UTC"):
             
-                # Stop processing if we have already downloaded and converted this file.
-                if self.hasExistingFile(output_dir, href):
-                    break
-
                 # The date is encoded in the URL for the advisory.
                 info = href.split(".")
                 date = datetime.datetime.strptime(info[-2], "%Y%m%d%H%M").strftime("%Y-%m-%d %H:%M")
@@ -156,7 +154,7 @@ class ToulouseFetcher(Fetcher):
                 item.href = href
                 item.url = urlparse.urljoin(self.url, href)
                 item.content = None
-                item.converted = False
+                item.setCheckState(checked_dict[self.hasExistingFile(output_dir, href)])
                 vaaList.addItem(item)
 
                 count += 1
@@ -185,10 +183,6 @@ class AnchorageFetcher(Fetcher):
 
             if text == "X" and href.split("/")[-2] == "VAA":
             
-                # Stop processing if we have already downloaded and converted this file.
-                if self.hasExistingFile(output_dir, href):
-                    break
-
                 # The date is encoded in the associated table text.
                 date = datetime.datetime.strptime(table_text[0], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
                 volcano = table_text[1].replace("_", " ")
@@ -197,7 +191,7 @@ class AnchorageFetcher(Fetcher):
                 item.href = href
                 item.url = urlparse.urljoin(self.url, href)
                 item.content = None
-                item.converted = False
+                item.setCheckState(checked_dict[self.hasExistingFile(output_dir, href)])
                 vaaList.addItem(item)
 
                 count += 1
@@ -226,7 +220,7 @@ class LocalFileFetcher(Fetcher):
         item.href = fileName
         item.url = urlparse.urljoin("file://", fileName)
         item.content = None
-        item.converted = False
+        item.setCheckState(checked_dict[False])
         vaaList.addItem(item)
 
 
@@ -265,7 +259,6 @@ class Window(QMainWindow):
         self.output_dir = self.settings.value("work directory",
                           os.path.join(os.getenv("HOME"), ".diana", "work"))
         self.workLog = []
-        self.converted = False
         
         contentWidget = QWidget()
         layout = QGridLayout(contentWidget)
@@ -355,7 +348,6 @@ class Window(QMainWindow):
         fetcher.fetch(self.vaaList, self.output_dir)
 
         self.workLog = []
-        self.converted = False
         self.updateButtons()
         
         if fetcher.showBusy:
@@ -367,7 +359,7 @@ class Window(QMainWindow):
 
     def updateButtons(self):
     
-        yet_to_convert = len(filter(lambda i: not self.vaaList.item(i).converted,
+        yet_to_convert = len(filter(lambda i: self.vaaList.item(i).checkState() == Qt.Unchecked,
                                     range(self.vaaList.count())))
         self.convertButton.setEnabled(yet_to_convert)
         editable = self.vaaList.count() > 0 and self.vaaList.currentRow() != -1
@@ -384,6 +376,9 @@ class Window(QMainWindow):
         for i in range(self.vaaList.count()):
         
             item = self.vaaList.item(i)
+            item.setCheckState(Qt.Unchecked)
+            QApplication.processEvents()
+
             href = item.href
             url = item.url
             
@@ -413,7 +408,6 @@ class Window(QMainWindow):
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             if s.wait() != 0:
                 failed_files.append(vaa_file)
-                item.setCheckState(Qt.Unchecked)
                 item.setIcon(QApplication.style().standardIcon(QStyle.SP_MessageBoxWarning))
             else:
                 # Remove the HTML file.
@@ -421,14 +415,9 @@ class Window(QMainWindow):
                 kml_files.append(kml_file)
                 item.setCheckState(Qt.Checked)
                 item.setIcon(QIcon())
-                item.converted = True
 
             self.workLog.append(s.stdout.read())
-            QApplication.processEvents()
         
-        # We have tried to convert the files.
-        self.converted = True
-
         # Update the log viewer if it is already shown.
         if self.logViewer.isVisible():
             self.showLog()
@@ -482,7 +471,7 @@ class Window(QMainWindow):
         if editDialog.exec_() == QDialog.Accepted:
             item.content = unicode(editDialog.textEdit.toPlainText())
             if oldContent != item.content:
-                item.converted = False
+                item.setCheckState(Qt.Unchecked)
 
         self.updateButtons()
     
