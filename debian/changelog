@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.7.0-1) unstable; urgency=low
+
+  * Released a new version of the tool with an updated user interface.
+
+ -- David Boddie <david.boddie@met.no>  Tue, 19 Aug 2014 14:01:02 +0200
+
 metno-fetch-vaa (0.6.1-2) unstable; urgency=low
 
   * Updated the dependencies to fix problems with running metno-vaa-kml.
