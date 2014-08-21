@@ -352,10 +352,10 @@ class Window(QMainWindow):
         
         if fetcher.showBusy:
             QApplication.restoreOverrideCursor()
-        
-        if self.vaaList.count() == 0:
-            QMessageBox.information(self, self.tr("Fetching from %1").arg(name),
-                self.tr("No new messages available from %1.").arg(name))
+            
+            if self.vaaList.count() == 0:
+                QMessageBox.information(self, self.tr("Fetching from %1").arg(name),
+                    self.tr("No new messages available from %1.").arg(name))
 
     def updateButtons(self):
     
