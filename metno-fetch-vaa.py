@@ -264,6 +264,8 @@ class Window(QMainWindow):
         layout = QGridLayout(contentWidget)
         
         fileMenu = self.menuBar().addMenu(self.tr("&File"))
+        newFileAction = fileMenu.addAction(self.tr("&New File..."), self.newFile,
+            QKeySequence.New)
         openFileAction = fileMenu.addAction(self.tr("&Open File..."), self.fetchAdvisories,
             QKeySequence.Open)
         openFileAction.name = u"Local file"
@@ -332,6 +334,40 @@ class Window(QMainWindow):
         else:
             self.resize(640, 480)
     
+    def newFile(self):
+    
+        # Ask for the name of the file.
+        volcano, success = QInputDialog.getText(self, self.tr("New File"),
+            self.tr("Volcano name:"))
+        
+        if success and volcano:
+            volcano = unicode(volcano)
+        else:
+            volcano = u"Unknown"
+        
+        date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        fileName = os.path.join(self.output_dir, u"%s (%s)" % (date, volcano))
+        
+        # Create the file.
+        try:
+            open(fileName, "w").write("")
+        except IOError:
+            QMessageBox.critical(self, self.tr("Error"),
+                self.tr("Failed to create an empty file to use for a new message.\n"
+                        'Please consult the documentation for support.'))
+            return
+        
+        # Add an item to the list.
+        item = QListWidgetItem(fileName)
+        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        item.href = fileName
+        item.url = urlparse.urljoin("file://", fileName)
+        item.content = None
+        item.setCheckState(checked_dict[False])
+        self.vaaList.addItem(item)
+
+        self.updateButtons()
+
     def fetchAdvisories(self):
     
         self.vaaList.clear()

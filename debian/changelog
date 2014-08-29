@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.7.2-1) precise; urgency=low
+
+  * Released a new version with new file functionality.
+
+ -- David Boddie <david.boddie@met.no>  Fri, 29 Aug 2014 12:33:32 +0200
+
 metno-fetch-vaa (0.7.1-1) unstable; urgency=low
 
   * Released a new version with minor changes.
