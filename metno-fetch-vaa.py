@@ -345,8 +345,8 @@ class Window(QMainWindow):
         else:
             volcano = u"Unknown"
         
-        date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        fileName = os.path.join(self.output_dir, u"%s (%s)" % (date, volcano))
+        date = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        fileName = os.path.join(self.output_dir, u"%s.%s" % (volcano, date))
         
         # Create the file.
         try:
@@ -367,6 +367,8 @@ class Window(QMainWindow):
         self.vaaList.addItem(item)
 
         self.updateButtons()
+        self.vaaList.setCurrentItem(item)
+        self.editButton.animateClick()
 
     def fetchAdvisories(self):
     
