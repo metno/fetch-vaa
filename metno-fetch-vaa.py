@@ -199,6 +199,66 @@ class AnchorageFetcher(Fetcher):
                     break
 
 
+class LondonFetcher(Fetcher):
+
+    url = "http://www.metoffice.gov.uk/aviation/vaac/vaacuk.html"
+    number_to_fetch = 1
+    returns_html = False
+
+    def fetch(self, vaaList, output_dir):
+    
+        "Reads the messages available from the URL for the current VAA centre."
+
+        html = urllib2.urlopen(self.url).read()
+
+        # The London VAAC currently shows just one advisory in its main page.
+        # We just extract what we can find.
+        at = html.find("VA ADVISORY")
+        if at == -1:
+            return
+        
+        start = html.rfind("<p>", 0, at)
+        if start == -1:
+            return
+        
+        start = html.find("<br>", start)
+        lines = html[start:].split("\n")
+        
+        text = ""
+        date = datetime.datetime.now()
+        volcano = "Unknown"
+
+        for line in lines:
+
+            line = line.strip()
+            if not line or line == "<br>":
+                continue
+            
+            text += line + "\n"
+            if line.startswith("DTG:"):
+                # The date is encoded in the advisory.
+                date_text = line[4:].lstrip()
+                date = datetime.datetime.strptime(date_text, "%Y%m%d/%H%MZ")
+            
+            if line.startswith("VOLCANO:"):
+                # The volcano is encoded in the advisory.
+                volcano = line[8:].lstrip()
+
+            if line == "=":
+                break
+        
+        item = QListWidgetItem("%s (%s)" % (date.strftime("%Y-%m-%d %H:%M:%S"), volcano))
+        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        # Use a different name for the path instead of the path of the page on the site.
+        item.href = "london." + date.strftime("%Y%m%d%H%M")
+        # Store the original location.
+        item.url = self.url
+        # We have already obtained the content.
+        item.content = text
+        item.setCheckState(checked_dict[self.hasExistingFile(output_dir, item.href)])
+        vaaList.addItem(item)
+
+
 class LocalFileFetcher(Fetcher):
 
     returns_html = False
@@ -527,6 +587,7 @@ if __name__ == "__main__":
 
     fetchers = {u"Toulouse VAAC": ToulouseFetcher(),
                 u"Anchorage VAAC": AnchorageFetcher(),
+                u"London VAAC": LondonFetcher(),
                 u"Local file": LocalFileFetcher()}
 
     window = Window(fetchers)

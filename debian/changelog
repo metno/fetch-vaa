@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.7.4-1) precise; urgency=low
+
+  * Released a new version with preliminary support for London VAAC.
+
+ -- David Boddie <david.boddie@met.no>  Mon, 01 Sep 2014 12:07:44 +0200
+
 metno-fetch-vaa (0.7.3-1) precise; urgency=low
 
   * Released a new version with improved file name handling.
