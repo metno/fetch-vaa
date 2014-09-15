@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.7.5-1) precise; urgency=low
+
+  * Released a new version with support for a test data source.
+
+ -- David Boddie <david.boddie@met.no>  Mon, 15 Sep 2014 14:34:19 +0200
+
 metno-fetch-vaa (0.7.4-1) precise; urgency=low
 
   * Released a new version with preliminary support for London VAAC.

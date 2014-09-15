@@ -284,6 +284,48 @@ class LocalFileFetcher(Fetcher):
         vaaList.addItem(item)
 
 
+class TestFetcher(Fetcher):
+
+    url = "https://dokit.met.no/_media/fou/kl/prosjekter/eemep/agua_de_pau.html"
+    number_to_fetch = 1
+    returns_html = True
+    
+    def fetch(self, vaaList, output_dir):
+    
+        "Reads the messages available from the URL for the current VAA centre."
+
+        html = urllib2.urlopen(self.url).read()
+        p = Parser()
+        p.feed(html)
+        p.close()
+        
+        date = datetime.datetime.now()
+        volcano = "Unknown"
+
+        lines = html.split("\n")
+        for line in lines:
+
+            if line.startswith("DTG:"):
+                # The date is encoded in the advisory.
+                date_text = line[4:].lstrip()
+                date = datetime.datetime.strptime(date_text, "%Y%m%d/%H%MZ")
+        
+            if line.startswith("VOLCANO:"):
+                # The volcano is encoded in the advisory.
+                volcano = line[8:].lstrip()
+        
+        item = QListWidgetItem("%s (%s)" % (date.strftime("%Y-%m-%d %H:%M:%S"), volcano))
+        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        # Use a different name for the path instead of the path of the page on the site.
+        item.href = "test." + date.strftime("%Y%m%d%H%M") + ".html"
+        # Store the original location.
+        item.url = self.url
+        # We have already obtained the content.
+        item.content = html
+        item.setCheckState(checked_dict[self.hasExistingFile(output_dir, item.href)])
+        vaaList.addItem(item)
+
+
 class EditDialog(QDialog):
 
     def __init__(self, content, parent = None):
@@ -588,7 +630,8 @@ if __name__ == "__main__":
     fetchers = {u"Toulouse VAAC": ToulouseFetcher(),
                 u"Anchorage VAAC": AnchorageFetcher(),
                 u"London VAAC": LondonFetcher(),
-                u"Local file": LocalFileFetcher()}
+                u"Local file": LocalFileFetcher(),
+                u"Test VAAC": TestFetcher()}
 
     window = Window(fetchers)
     window.show()
