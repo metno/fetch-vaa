@@ -261,7 +261,7 @@ class LondonFetcher(Fetcher):
         # We have already obtained the content.
         item.content = text
         item.setCheckState(Qt.Unchecked)
-        if self.hasExistingFile(output_dir, href):
+        if self.hasExistingFile(output_dir, item.href):
             item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
         vaaList.addItem(item)
 
@@ -330,7 +330,7 @@ class TestFetcher(Fetcher):
         # We have already obtained the content.
         item.content = html
         item.setCheckState(Qt.Unchecked)
-        if self.hasExistingFile(output_dir, href):
+        if self.hasExistingFile(output_dir, item.href):
             item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
         vaaList.addItem(item)
 
