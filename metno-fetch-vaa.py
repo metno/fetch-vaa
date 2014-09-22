@@ -110,6 +110,7 @@ class Fetcher:
 
     showBusy = True
     showInMenu = True
+    defaultFlags = Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
 
     def hasExistingFile(self, output_dir, href):
 
@@ -150,11 +151,13 @@ class ToulouseFetcher(Fetcher):
                 date = datetime.datetime.strptime(info[-2], "%Y%m%d%H%M").strftime("%Y-%m-%d %H:%M")
                 volcano = info[2].replace("_", " ")
                 item = QListWidgetItem("%s (%s)" % (date, volcano))
-                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                item.setFlags(self.defaultFlags)
                 item.href = href
                 item.url = urlparse.urljoin(self.url, href)
                 item.content = None
-                item.setCheckState(checked_dict[self.hasExistingFile(output_dir, href)])
+                item.setCheckState(Qt.Unchecked)
+                if self.hasExistingFile(output_dir, href):
+                    item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
 
                 count += 1
@@ -187,11 +190,13 @@ class AnchorageFetcher(Fetcher):
                 date = datetime.datetime.strptime(table_text[0], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
                 volcano = table_text[1].replace("_", " ")
                 item = QListWidgetItem("%s (%s)" % (date, volcano))
-                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                item.setFlags(self.defaultFlags)
                 item.href = href
                 item.url = urlparse.urljoin(self.url, href)
                 item.content = None
-                item.setCheckState(checked_dict[self.hasExistingFile(output_dir, href)])
+                item.setCheckState(Qt.Unchecked)
+                if self.hasExistingFile(output_dir, href):
+                    item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
 
                 count += 1
@@ -248,14 +253,16 @@ class LondonFetcher(Fetcher):
                 break
         
         item = QListWidgetItem("%s (%s)" % (date.strftime("%Y-%m-%d %H:%M:%S"), volcano))
-        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        item.setFlags(self.defaultFlags)
         # Use a different name for the path instead of the path of the page on the site.
         item.href = "london." + date.strftime("%Y%m%d%H%M")
         # Store the original location.
         item.url = self.url
         # We have already obtained the content.
         item.content = text
-        item.setCheckState(checked_dict[self.hasExistingFile(output_dir, item.href)])
+        item.setCheckState(Qt.Unchecked)
+        if self.hasExistingFile(output_dir, href):
+            item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
         vaaList.addItem(item)
 
 
@@ -276,11 +283,11 @@ class LocalFileFetcher(Fetcher):
         
         vaaList.clear()
         item = QListWidgetItem(fileName)
-        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        item.setFlags(self.defaultFlags)
         item.href = fileName
         item.url = urlparse.urljoin("file://", fileName)
         item.content = None
-        item.setCheckState(checked_dict[False])
+        item.setCheckState(Qt.Unchecked)
         vaaList.addItem(item)
 
 
@@ -315,14 +322,16 @@ class TestFetcher(Fetcher):
                 volcano = line[8:].lstrip()
         
         item = QListWidgetItem("%s (%s)" % (date.strftime("%Y-%m-%d %H:%M:%S"), volcano))
-        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        item.setFlags(self.defaultFlags)
         # Use a different name for the path instead of the path of the page on the site.
         item.href = "test." + date.strftime("%Y%m%d%H%M") + ".html"
         # Store the original location.
         item.url = self.url
         # We have already obtained the content.
         item.content = html
-        item.setCheckState(checked_dict[self.hasExistingFile(output_dir, item.href)])
+        item.setCheckState(Qt.Unchecked)
+        if self.hasExistingFile(output_dir, href):
+            item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
         vaaList.addItem(item)
 
 
@@ -359,8 +368,8 @@ class Window(QMainWindow):
         self.settings = Settings("met.no", "metno-fetch-vaa")
         
         self.output_dir = self.settings.value("work directory",
-                          os.path.join(os.getenv("HOME"), ".diana", "work"))
-        self.workLog = []
+                          os.path.join(os.getenv("HOME"), ".vaac"))
+        self.workLog = {}
         
         contentWidget = QWidget()
         layout = QGridLayout(contentWidget)
@@ -419,9 +428,10 @@ class Window(QMainWindow):
         self.showHideLogViewer(self.settings.value("window/log", False))
 
         # Make connections.
-        self.vaaList.itemSelectionChanged.connect(self.showLog)
+        self.vaaList.currentItemChanged.connect(self.showLog)
         self.vaaList.itemActivated.connect(self.showLog)
-        self.vaaList.itemSelectionChanged.connect(self.updateButtons)
+        self.vaaList.currentItemChanged.connect(self.updateButtons)
+        self.vaaList.itemChanged.connect(self.updateButtons)
         self.vaaList.itemActivated.connect(self.updateButtons)
         self.editButton.clicked.connect(self.editMessage)
         self.convertButton.clicked.connect(self.convertAdvisories)
@@ -487,7 +497,7 @@ class Window(QMainWindow):
         
         fetcher.fetch(self.vaaList, self.output_dir)
 
-        self.workLog = []
+        self.workLog = {}
         self.updateButtons()
         
         if fetcher.showBusy:
@@ -499,8 +509,15 @@ class Window(QMainWindow):
 
     def updateButtons(self):
     
-        yet_to_convert = len(filter(lambda i: self.vaaList.item(i).checkState() == Qt.Unchecked,
-                                    range(self.vaaList.count())))
+        yet_to_convert = False
+
+        for i in range(self.vaaList.count()):
+            item = self.vaaList.item(i)
+            if item.checkState() == Qt.Checked and \
+               not os.path.exists(os.path.join(self.output_dir, item.href)):
+               yet_to_convert = True
+               break
+
         self.convertButton.setEnabled(yet_to_convert)
         editable = self.vaaList.count() > 0 and self.vaaList.currentRow() != -1
         self.editButton.setEnabled(editable)
@@ -511,14 +528,14 @@ class Window(QMainWindow):
         
         kml_files = []
         failed_files = []
-        self.workLog = []
+        self.workLog = {}
         
         for i in range(self.vaaList.count()):
         
             item = self.vaaList.item(i)
-            item.setCheckState(Qt.Unchecked)
-            QApplication.processEvents()
-
+            if not item.checkState() == Qt.Checked:
+                continue
+            
             href = item.href
             url = item.url
             
@@ -531,6 +548,9 @@ class Window(QMainWindow):
                 kml_file = file_name + ".kml"
             
             kml_file = os.path.join(self.output_dir, kml_file)
+            if os.path.exists(kml_file):
+                continue
+
             if not item.content:
                 vaa_content = item.content = urllib2.urlopen(url).read()
             else:
@@ -543,6 +563,8 @@ class Window(QMainWindow):
 
             open(vaa_file, "w").write(vaa_content)
             
+            QApplication.processEvents()
+
             # Convert the message in the HTML file to a KML file.
             s = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -553,10 +575,9 @@ class Window(QMainWindow):
                 # Remove the HTML file.
                 os.remove(vaa_file)
                 kml_files.append(kml_file)
-                item.setCheckState(Qt.Checked)
-                item.setIcon(QIcon())
+                item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
 
-            self.workLog.append(s.stdout.read())
+            self.workLog[item.href] = s.stdout.read()
         
         # Update the log viewer if it is already shown.
         if self.logViewer.isVisible():
@@ -568,19 +589,13 @@ class Window(QMainWindow):
     
     def showLog(self):
     
-        # Since this is called when the selection changes, and the selection
-        # changes just before the list is cleared, we can't check for the
-        # number of items in the list.
-        if len(self.vaaList.selectedItems()) == 0:
-            self.logViewer.clear()
-            return
-        
-        row = self.vaaList.currentRow()
-        if 0 <= row < len(self.workLog):
-        
-            text = self.workLog[row]
+        item = self.vaaList.currentItem()
+        if item and item.href in self.workLog:
+            text = self.workLog[item.href]
             self.logViewer.setPlainText(text)
             self.showHideLogViewer(True)
+        else:
+            self.logViewer.clear()
     
     # Use a decorator to avoid receiving the signal that includes a boolean value.
     @pyqtSlot()
