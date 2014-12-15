@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.7.8-1) precise; urgency=low
+
+  * Bugfix release.
+
+ -- David Boddie <david.boddie@met.no>  Mon, 15 Dec 2014 15:14:33 +0100
+
 metno-fetch-vaa (0.7.7-1) precise; urgency=low
 
   * Bugfix release.

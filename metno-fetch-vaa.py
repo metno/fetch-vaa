@@ -284,7 +284,7 @@ class LocalFileFetcher(Fetcher):
         vaaList.clear()
         item = QListWidgetItem(fileName)
         item.setFlags(self.defaultFlags)
-        item.href = fileName
+        item.href = os.path.split(fileName)[1]
         item.url = urlparse.urljoin("file://", fileName)
         item.content = None
         item.setCheckState(Qt.Unchecked)

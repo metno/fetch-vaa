@@ -1,0 +1,7 @@
+metno-fetch-vaa changelog
+-------------------------
+
+0.7.8 (2014-12-15)
+Fixed handling of local files, using their file names instead of their full
+paths to avoid problems with storing files with derived names in the .vaac
+directory.
