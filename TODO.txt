@@ -1,0 +1,5 @@
+ * Make the tool simpler
+   * Fewer choices
+   * Automatic conversion
+ * Show where files are saved
+ * Potentially connect to Diana and/or Ted via coserver
