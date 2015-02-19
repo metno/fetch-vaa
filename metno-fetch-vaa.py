@@ -206,8 +206,11 @@ class AnchorageFetcher(Fetcher):
 
 class LondonFetcher(Fetcher):
 
+    # Scrape the London VAAC page on the Met Office website.
     url = "http://www.metoffice.gov.uk/aviation/vaac/vaacuk.html"
-    number_to_fetch = 1
+    # A listing of the files can be obtained from this address:
+    # http://www.metoffice.gov.uk/aviation/vaac/data/?C=M;O=D
+    number_to_fetch = 10
     returns_html = False
 
     def fetch(self, vaaList, output_dir):
@@ -215,8 +218,47 @@ class LondonFetcher(Fetcher):
         "Reads the messages available from the URL for the current VAA centre."
 
         html = urllib2.urlopen(self.url).read()
+        p = Parser()
+        p.feed(html)
+        p.close()
+        
+        count = 0
+        # Some message appear more than once in the table, so filter out duplicates.
+        urls = set()
 
-        # The London VAAC currently shows just one advisory in its main page.
+        for href, text, table_text in p.anchors:
+
+            if text == "VAA" and href.endswith(".html"):
+            
+                # The date is encoded in the associated table text.
+                # Unfortunately, it is localised, so we use the date from the
+                # message itself.
+                message_url = urlparse.urljoin(self.url, href)
+                if message_url in urls:
+                    continue
+
+                urls.add(message_url)
+
+                volcano, date, text = self.read_message(message_url)
+                item = QListWidgetItem("%s (%s)" % (date, volcano))
+                item.setFlags(self.defaultFlags)
+                item.href = "london." + date.strftime("%Y%m%d%H%M")
+                item.url = message_url
+                item.content = text
+                item.setCheckState(Qt.Unchecked)
+                if self.hasExistingFile(output_dir, item.href):
+                    item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
+                vaaList.addItem(item)
+
+                count += 1
+                if count == self.number_to_fetch:
+                    break
+
+    def read_message(self, url):
+    
+        html = urllib2.urlopen(url).read()
+
+        # The London VAAC currently shows advisories in HTML pages.
         # We just extract what we can find.
         at = html.find("VA ADVISORY")
         if at == -1:
@@ -252,18 +294,7 @@ class LondonFetcher(Fetcher):
             if line == "=":
                 break
         
-        item = QListWidgetItem("%s (%s)" % (date.strftime("%Y-%m-%d %H:%M:%S"), volcano))
-        item.setFlags(self.defaultFlags)
-        # Use a different name for the path instead of the path of the page on the site.
-        item.href = "london." + date.strftime("%Y%m%d%H%M")
-        # Store the original location.
-        item.url = self.url
-        # We have already obtained the content.
-        item.content = text
-        item.setCheckState(Qt.Unchecked)
-        if self.hasExistingFile(output_dir, item.href):
-            item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
-        vaaList.addItem(item)
+        return volcano, date, text
 
 
 class LocalFileFetcher(Fetcher):

@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=metno-fetch-vaa
+Name=Fetch VAA Messages
 GenericName=Fetch VAA Messages
 Comment=Fetches Volcanic Ash Advisory messages from a Web site.
-Exec=metno-fetch-vaa.py --gui
+Exec=metno-fetch-vaa.py
 Icon=/usr/share/pixmaps/metno-fetch-vaa.png
 MimeType=
 ServiceTypes=
