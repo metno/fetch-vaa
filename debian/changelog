@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.8.0-1) precise; urgency=low
+
+  * Released a new version with an About menu entry.
+
+ -- David Boddie <david.boddie@met.no>  Fri, 20 Feb 2015 12:21:53 +0100
+
 metno-fetch-vaa (0.7.9-1) precise; urgency=low
 
   * Released a new version with updated support for London VAAC.

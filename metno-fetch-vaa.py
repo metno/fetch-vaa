@@ -21,6 +21,8 @@ import commands, datetime, HTMLParser, os, subprocess, sys, urllib2, urlparse
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+__version__ = "0.8.0"
+
 checked_dict = {False: Qt.Unchecked, True: Qt.Checked}
 
 class Settings(QSettings):
@@ -426,6 +428,10 @@ class Window(QMainWindow):
         fileMenu.addSeparator()
         fileMenu.addAction(self.tr("E&xit"), self.close, QKeySequence(QKeySequence.Quit))
 
+        # Add a Help menu with about and documentation entries.
+        helpMenu = self.menuBar().addMenu(self.tr("&Help"))
+        aboutAction = helpMenu.addAction(self.tr("&About..."), self.about)
+        
         # Create a list of downloaded advisories.
         self.vaaList = QListWidget()
         layout.addWidget(self.vaaList, 0, 0)
@@ -476,6 +482,14 @@ class Window(QMainWindow):
             self.restoreGeometry(self.settings.value("window/geometry").toByteArray())
         else:
             self.resize(640, 480)
+    
+    def about(self):
+
+        QMessageBox.about(self, self.tr("About this program"),
+            self.tr("<qt>Fetches Volcanic Ash Advisory (VAA) messages from certain "
+                    "Volcanic Ash Advisory Centres (VAAC) and converts them to "
+                    "Keyhole Markup Language (KML) files for use with Diana and "
+                    "Ted.<p><b>Version:</b> %1</qt>").arg(__version__))
     
     def newFile(self):
     
@@ -673,9 +687,9 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
 
-    fetchers = {u"Toulouse VAAC": ToulouseFetcher(),
-                u"Anchorage VAAC": AnchorageFetcher(),
-                u"London VAAC": LondonFetcher(),
+    fetchers = {u"London VAAC": LondonFetcher(),
+                u"Toulouse VAAC": ToulouseFetcher(),
+               #u"Anchorage VAAC": AnchorageFetcher(),
                 u"Local file": LocalFileFetcher(),
                 u"Test VAAC": TestFetcher()}
 
