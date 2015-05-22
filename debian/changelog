@@ -1,3 +1,10 @@
+metno-fetch-vaa (0.9.0-1) precise; urgency=low
+
+  * Reflected the use of a common metno_fetch_vaa module.
+  * Included a script and module to support integration with Ted.
+
+ -- David Boddie <david.boddie@met.no>  Fri, 22 May 2015 13:18:58 +0200
+
 metno-fetch-vaa (0.8.0-1) precise; urgency=low
 
   * Released a new version with an About menu entry.
