@@ -154,11 +154,14 @@ class ToulouseFetcher(Fetcher):
                 volcano = info[2].replace("_", " ")
                 item = QListWidgetItem("%s (%s)" % (date, volcano))
                 item.setFlags(self.defaultFlags)
-                item.href = href
+                # The name to use for the locally stored file needs to be
+                # in a suitable format so that Diana can read it as part of
+                # a collection.
+                item.filename = "toulouse." + info[-2] + ".html"
                 item.url = urlparse.urljoin(self.url, href)
                 item.content = None
                 item.setCheckState(Qt.Unchecked)
-                if self.hasExistingFile(output_dir, href):
+                if self.hasExistingFile(output_dir, item.filename):
                     item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
 
@@ -193,7 +196,7 @@ class AnchorageFetcher(Fetcher):
                 volcano = table_text[1].replace("_", " ")
                 item = QListWidgetItem("%s (%s)" % (date, volcano))
                 item.setFlags(self.defaultFlags)
-                item.href = href
+                item.filename = href
                 item.url = urlparse.urljoin(self.url, href)
                 item.content = None
                 item.setCheckState(Qt.Unchecked)
@@ -244,11 +247,11 @@ class LondonFetcher(Fetcher):
                 volcano, date, text = self.read_message(message_url)
                 item = QListWidgetItem("%s (%s)" % (date, volcano))
                 item.setFlags(self.defaultFlags)
-                item.href = "london." + date.strftime("%Y%m%d%H%M")
+                item.filename = "london." + date.strftime("%Y%m%d%H%M")
                 item.url = message_url
                 item.content = text
                 item.setCheckState(Qt.Unchecked)
-                if self.hasExistingFile(output_dir, item.href):
+                if self.hasExistingFile(output_dir, item.filename):
                     item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
 
@@ -317,7 +320,7 @@ class LocalFileFetcher(Fetcher):
         vaaList.clear()
         item = QListWidgetItem(fileName)
         item.setFlags(self.defaultFlags)
-        item.href = os.path.split(fileName)[1]
+        item.filename = os.path.split(fileName)[1]
         item.url = urlparse.urljoin("file://", fileName)
         item.content = None
         item.setCheckState(Qt.Unchecked)
@@ -357,13 +360,13 @@ class TestFetcher(Fetcher):
         item = QListWidgetItem("%s (%s)" % (date.strftime("%Y-%m-%d %H:%M:%S"), volcano))
         item.setFlags(self.defaultFlags)
         # Use a different name for the path instead of the path of the page on the site.
-        item.href = "test." + date.strftime("%Y%m%d%H%M") + ".html"
+        item.filename = "test." + date.strftime("%Y%m%d%H%M") + ".html"
         # Store the original location.
         item.url = self.url
         # We have already obtained the content.
         item.content = html
         item.setCheckState(Qt.Unchecked)
-        if self.hasExistingFile(output_dir, item.href):
+        if self.hasExistingFile(output_dir, item.filename):
             item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
         vaaList.addItem(item)
 
@@ -517,7 +520,7 @@ class Window(QMainWindow):
         # Add an item to the list.
         item = QListWidgetItem(fileName)
         item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        item.href = fileName
+        item.filename = fileName
         item.url = urlparse.urljoin("file://", fileName)
         item.content = None
         item.setCheckState(checked_dict[False])
@@ -559,7 +562,7 @@ class Window(QMainWindow):
         for i in range(self.vaaList.count()):
             item = self.vaaList.item(i)
             if item.checkState() == Qt.Checked and \
-               not os.path.exists(os.path.join(self.output_dir, item.href)):
+               not os.path.exists(os.path.join(self.output_dir, item.filename)):
                yet_to_convert = True
                break
 
@@ -581,7 +584,7 @@ class Window(QMainWindow):
             if not item.checkState() == Qt.Checked:
                 continue
             
-            href = item.href
+            href = item.filename
             url = item.url
             
             file_name = href.split("/")[-1]
@@ -622,7 +625,7 @@ class Window(QMainWindow):
                 kml_files.append(kml_file)
                 item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
 
-            self.workLog[item.href] = s.stdout.read()
+            self.workLog[item.filename] = s.stdout.read()
         
         # Update the log viewer if it is already shown.
         if self.logViewer.isVisible():
@@ -635,8 +638,8 @@ class Window(QMainWindow):
     def showLog(self):
     
         item = self.vaaList.currentItem()
-        if item and item.href in self.workLog:
-            text = self.workLog[item.href]
+        if item and item.filename in self.workLog:
+            text = self.workLog[item.filename]
             self.logViewer.setPlainText(text)
             self.showHideLogViewer(True)
         else:

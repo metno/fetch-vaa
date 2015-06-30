@@ -1,6 +1,19 @@
 metno-fetch-vaa changelog
 -------------------------
 
+0.9.1 (2015-06-30)
+Changed the file name format used for messages from Toulouse VAAC.
+
+0.9.0 (2015-05-22)
+Changed the application to use a common metno_fetch_vaa module.
+Included a script and module to support integration with Ted.
+
+0.8.0 (2015-02-20)
+Added an About menu entry.
+
+0.7.9 (2015-02-19)
+Updated support for London VAAC.
+
 0.7.8 (2014-12-15)
 Fixed handling of local files, using their file names instead of their full
 paths to avoid problems with storing files with derived names in the .vaac
