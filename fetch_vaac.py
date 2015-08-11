@@ -45,6 +45,7 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
         self.comboBox.currentIndexChanged[QtCore.QString].connect(self.updateList)
         self.vaaList.currentItemChanged.connect(self.vaaListItemChanged)
         self.pushButton.clicked.connect(self.showVAACmessage)
+        self.vaaList.doubleClicked.connect(self.showVAACmessage)
 
         self.showVAAC = QtGui.QTextBrowser()
 
