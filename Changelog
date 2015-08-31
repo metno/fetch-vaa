@@ -1,6 +1,11 @@
 metno-fetch-vaa changelog
 -------------------------
 
+0.9.3 (2015-08-31)
+Fixed breakage of the fetch_vaac.py script by updating the use of attributes
+to match that used in the underlying module.
+Fixed a couple of object referencing issues in fetch_vaac.py.
+
 0.9.2 (2015-08-11)
 Enabled double clicking on list items to open the message window.
 
