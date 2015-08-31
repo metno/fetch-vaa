@@ -60,9 +60,6 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
             item.setData(QtCore.Qt.CheckStateRole, QtCore.QVariant())
             item.setFlags(QtCore.Qt.ItemIsSelectable| QtCore.Qt.ItemIsEnabled )
 
-
-
-
     def accept(self):
 
         self.convertAdvisories()
@@ -70,8 +67,8 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
         super(MainDialog,self).accept()
 
     def reject(self):
-        self.printVAACmessage()
 
+        self.printVAACmessage()
 
         super(MainDialog,self).reject()
 
@@ -88,17 +85,13 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
             print "geom:", geom.x(), geom.y(), geom.width(), geom.height()
             self.showVAAC.close()
 
-
-
     def vaaListItemChanged(self):
         if self.showVAAC.isVisible():
             self.showVAACmessage()
 
-
     def showVAACmessage(self):
         row = self.vaaList.currentRow()
         item = self.vaaList.item(row)
-
 
         if not item.content:
             item.content = urllib2.urlopen(item.url).read()
@@ -115,12 +108,12 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
         self.workLog = {}
 
         row = self.vaaList.currentRow()
+        if row == -1:
+            return
+
         item = self.vaaList.item(row)
-
-        href = item.href
         url = item.url
-
-        file_name = href.split("/")[-1]
+        file_name = item.filename
 
         self.output_dir = os.path.abspath(self.output_dir)
         vaa_file = os.path.join(self.output_dir, file_name)
@@ -158,7 +151,7 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
 
             if s.wait() != 0:
                 failed_files.append(vaa_file)
-                item.setIcon(QApplication.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                item.setIcon(QtGui.QApplication.style().standardIcon(QtGui.QStyle.SP_MessageBoxWarning))
                 message += " conversion failed."
             else:
                 # Remove the HTML file.
