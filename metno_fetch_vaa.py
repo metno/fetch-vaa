@@ -21,7 +21,7 @@ import commands, datetime, HTMLParser, os, subprocess, sys, urllib2, urlparse
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-__version__ = "0.9.3"
+__version__ = "0.9.4"
 
 checked_dict = {False: Qt.Unchecked, True: Qt.Checked}
 

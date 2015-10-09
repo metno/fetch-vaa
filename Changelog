@@ -1,6 +1,12 @@
 metno-fetch-vaa changelog
 -------------------------
 
+0.9.4 (2015-10-09)
+Made the fetch_vaac.py scripts's window stay on top of all others by using
+a window flag that hints to the window manager that this is the desired
+behaviour.
+Ensured that the output directory exists and tries to create it if not.
+
 0.9.3 (2015-08-31)
 Fixed breakage of the fetch_vaac.py script by updating the use of attributes
 to match that used in the underlying module.

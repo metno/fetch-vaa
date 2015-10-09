@@ -8,7 +8,7 @@ setup(
     author="David Boddie",
     author_email="david.boddie@met.no",
     url="http://www.met.no/",
-    version="0.9.3",
+    version="0.9.4",
     py_modules=["metno_fetch_vaa", "selectVaac"],
     scripts=["fetch_vaac.py", "metno-fetch-vaa.py"],
     data_files=[("share/applications", ["share/applications/metno-fetch-vaa.desktop"]),

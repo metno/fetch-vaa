@@ -52,6 +52,7 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
         self.showVAAC.setGeometry(10,10,460,380)
 
     def updateList(self, vaac):
+        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.vaaList.clear()
         self.fetchers[str(vaac)].fetch(self.vaaList,self.output_dir)
 
@@ -59,6 +60,8 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
             item = self.vaaList.item(i)
             item.setData(QtCore.Qt.CheckStateRole, QtCore.QVariant())
             item.setFlags(QtCore.Qt.ItemIsSelectable| QtCore.Qt.ItemIsEnabled )
+
+        QtGui.QApplication.restoreOverrideCursor()
 
     def accept(self):
 
@@ -169,16 +172,23 @@ if __name__ == "__main__":
 
 
     if len(sys.argv) < 2:
-        print "Usage: fetch_vaac.py <directory for files>"
-        exit(1)
+        sys.stderr.write("Usage: fetch_vaac.py <directory for files>\n")
+        sys.exit(1)
 
     output_dir = sys.argv[1]
 
+    if not os.path.exists(output_dir):
+        try:
+            os.mkdir(output_dir)
+        except OSError:
+            sys.stderr.write("Failed to create output directory: '%s'\n" % output_dir)
+            sys.exit(1)
+
     fetchers = {u"London VAAC": metno_fetch_vaa.LondonFetcher(), u"Toulouse VAAC": metno_fetch_vaa.ToulouseFetcher(), u"Test VAAC": metno_fetch_vaa.TestFetcher()}
 
-    app= QtGui.QApplication(sys.argv)
+    app = QtGui.QApplication(sys.argv)
     form = MainDialog(fetchers,output_dir)
     form.setWindowFlags(form.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
     form.show()
 
-    app.exec_()
+    sys.exit(app.exec_())
