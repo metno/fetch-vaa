@@ -1,6 +1,10 @@
 metno-fetch-vaa changelog
 -------------------------
 
+0.9.5 (2015-12-07)
+Replaced the URL for the file referenced in the TestFetcher class with one
+that is publicly available.
+
 0.9.4 (2015-10-09)
 Made the fetch_vaac.py scripts's window stay on top of all others by using
 a window flag that hints to the window manager that this is the desired

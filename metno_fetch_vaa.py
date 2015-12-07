@@ -329,7 +329,7 @@ class LocalFileFetcher(Fetcher):
 
 class TestFetcher(Fetcher):
 
-    url = "https://dokit.met.no/_media/fou/kl/prosjekter/eemep/agua_de_pau.html"
+    url = "https://github.com/metno/fetch-vaa/raw/master/files/london-201511101500.vaa.txt"
     number_to_fetch = 1
     returns_html = True
     
@@ -337,15 +337,12 @@ class TestFetcher(Fetcher):
     
         "Reads the messages available from the URL for the current VAA centre."
 
-        html = urllib2.urlopen(self.url).read()
-        p = Parser()
-        p.feed(html)
-        p.close()
+        text = urllib2.urlopen(self.url).read()
         
         date = datetime.datetime.now()
         volcano = "Unknown"
 
-        lines = html.split("\n")
+        lines = text.split("\n")
         for line in lines:
 
             if line.startswith("DTG:"):
@@ -360,11 +357,11 @@ class TestFetcher(Fetcher):
         item = QListWidgetItem("%s (%s)" % (date.strftime("%Y-%m-%d %H:%M:%S"), volcano))
         item.setFlags(self.defaultFlags)
         # Use a different name for the path instead of the path of the page on the site.
-        item.filename = "test." + date.strftime("%Y%m%d%H%M") + ".html"
+        item.filename = "test." + date.strftime("%Y%m%d%H%M")
         # Store the original location.
         item.url = self.url
         # We have already obtained the content.
-        item.content = html
+        item.content = text
         item.setCheckState(Qt.Unchecked)
         if self.hasExistingFile(output_dir, item.filename):
             item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
