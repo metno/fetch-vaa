@@ -602,8 +602,9 @@ class Window(QMainWindow):
                 vaa_content = item.content
 
             # Wrap any non-HTML content in a <pre> element.
-            if not vaa_file.endswith(".html"):
+            if vaa_content.lstrip()[:1] != "<":
                 vaa_content = "<pre>\n" + vaa_content + "\n</pre>\n"
+            if not vaa_file.endswith(".html"):
                 vaa_file += ".html"
 
             open(vaa_file, "w").write(vaa_content)

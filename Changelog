@@ -1,6 +1,10 @@
 metno-fetch-vaa changelog
 -------------------------
 
+0.9.6 (2015-12-08)
+Added a simple check for HTML tags in files to ensure that HTML is not
+accidentally wrapped in <pre> tags.
+
 0.9.5 (2015-12-07)
 Replaced the URL for the file referenced in the TestFetcher class with one
 that is publicly available.
