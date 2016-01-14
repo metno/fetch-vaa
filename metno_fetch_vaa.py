@@ -21,7 +21,7 @@ import commands, datetime, HTMLParser, os, subprocess, sys, urllib2, urlparse
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-__version__ = "0.9.4"
+__version__ = "0.9.7"
 
 checked_dict = {False: Qt.Unchecked, True: Qt.Checked}
 
@@ -402,7 +402,7 @@ class Window(QMainWindow):
         
         self.output_dir = self.settings.value("work directory",
                           os.path.join(os.getenv("HOME"), ".vaac"))
-        self.workLog = {}
+        self.workLog = ""
         
         contentWidget = QWidget()
         layout = QGridLayout(contentWidget)
@@ -455,7 +455,7 @@ class Window(QMainWindow):
         layout.setRowStretch(1, 1)
 
         # Add a log viewer.
-        self.logViewer = QPlainTextEdit()
+        self.logViewer = QTextEdit()
         self.logViewer.setReadOnly(True)
         self.showHideLogButton = QPushButton(self.tr("&Hide log"))
         self.showHideLogButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
@@ -482,7 +482,29 @@ class Window(QMainWindow):
             self.restoreGeometry(self.settings.value("window/geometry").toByteArray())
         else:
             self.resize(640, 480)
-    
+
+
+    def updateWorkLog(self, isOK, hasConverted, message):
+        if isOK:
+            color="green"
+        else:
+            color ="red"
+
+        if hasConverted:
+            header = "VAAC message converted"
+        else:
+            header="VAAC message not converted"
+
+        import datetime
+        mytime = datetime.datetime.now().isoformat()
+        logEntry= "<i>%s</i> <b > : <font color='%s'> %s <br></font></b>" % (mytime, color,header)
+
+        logEntry+= " %s <p>" % message
+
+        self.logViewer.insertHtml(logEntry)
+
+
+
     def about(self):
 
         QMessageBox.about(self, self.tr("About this program"),
@@ -542,7 +564,6 @@ class Window(QMainWindow):
         
         fetcher.fetch(self.vaaList, self.output_dir)
 
-        self.workLog = {}
         self.updateButtons()
         
         if fetcher.showBusy:
@@ -568,12 +589,10 @@ class Window(QMainWindow):
         self.editButton.setEnabled(editable)
     
     def convertAdvisories(self):
-    
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
         kml_files = []
         failed_files = []
-        self.workLog = {}
         
         for i in range(self.vaaList.count()):
         
@@ -593,8 +612,16 @@ class Window(QMainWindow):
                 kml_file = file_name + ".kml"
             
             kml_file = os.path.join(self.output_dir, kml_file)
+
+            hasConverted=False
+            isOK=True
+            message = item.text()
+
             if os.path.exists(kml_file):
-                continue
+                 message += " not converted. File already available in " + kml_file
+                 self.updateWorkLog(isOK,hasConverted,message)
+                 continue
+
 
             if not item.content:
                 vaa_content = item.content = urllib2.urlopen(url).read()
@@ -614,16 +641,26 @@ class Window(QMainWindow):
             # Convert the message in the HTML file to a KML file.
             s = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+
+
+            output=s.stdout.read()
+
+
             if s.wait() != 0:
                 failed_files.append(vaa_file)
                 item.setIcon(QApplication.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                message += " conversion failed %s." % output
             else:
                 # Remove the HTML file.
                 os.remove(vaa_file)
                 kml_files.append(kml_file)
                 item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
+                message += " converted. File available in " + kml_file +" % s " % output
+                hasConverted=True
+                isOK=True
 
-            self.workLog[item.filename] = s.stdout.read()
+            self.updateWorkLog(hasConverted,isOK,message)
         
         # Update the log viewer if it is already shown.
         if self.logViewer.isVisible():
@@ -634,14 +671,9 @@ class Window(QMainWindow):
         QApplication.restoreOverrideCursor()
     
     def showLog(self):
-    
-        item = self.vaaList.currentItem()
-        if item and item.filename in self.workLog:
-            text = self.workLog[item.filename]
-            self.logViewer.setPlainText(text)
+
             self.showHideLogViewer(True)
-        else:
-            self.logViewer.clear()
+
     
     # Use a decorator to avoid receiving the signal that includes a boolean value.
     @pyqtSlot()

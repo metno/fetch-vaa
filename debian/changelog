@@ -1,3 +1,10 @@
+metno-fetch-vaa (0.9.7-1ubuntu1) precise; urgency=low
+
+  *  Released a new version with upstream fixes
+  *  Show log with status of converted messages	
+
+ -- Helen Korsmo <helen.korsmo@met.no>  Thu, 14 Jan 2016 16:01:59 +0100
+
 metno-fetch-vaa (0.9.6-1) precise; urgency=low
 
   * Released a new version with upstream fixes.
