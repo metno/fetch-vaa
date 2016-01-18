@@ -16,31 +16,31 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-import commands, datetime, HTMLParser, os, subprocess, sys, urllib2, urlparse
+import commands, datetime, HTMLParser, os, subprocess, urllib2, urlparse
 
-from PyQt4.QtCore import *
+import PyQt4.QtCore as QtCore
 from PyQt4.QtGui import *
 
 __version__ = "0.9.7"
 
-checked_dict = {False: Qt.Unchecked, True: Qt.Checked}
+checked_dict = {False: QtCore.Qt.Unchecked, True: QtCore.Qt.Checked}
 
-class Settings(QSettings):
+class Settings(QtCore.QSettings):
 
     """Convenience class to help read values from settings files as Python datatypes.
     """
 
     def __init__(self, organisation, product):
 
-        QSettings.__init__(self, organisation, product)
+       QtCore.QSettings.__init__(self, organisation, product)
     
-    def value(self, key, default = QVariant()):
+    def value(self, key, default = QtCore.QVariant()):
     
         """Reads the value from the settings file that corresponds to the given key,
         with the type defined by the default value. If the key is not defined in the
         settings file then the default value is returned instead.
         """
-        value = QSettings.value(self, key, default)
+        value = QtCore.QSettings.value(self, key, default)
         if type(default) == int:
             return value.toInt()[0]
         elif type(default) == bool:
@@ -112,7 +112,7 @@ class Fetcher:
 
     showBusy = True
     showInMenu = True
-    defaultFlags = Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
+    defaultFlags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsUserCheckable
 
     def hasExistingFile(self, output_dir, href):
 
@@ -160,7 +160,7 @@ class ToulouseFetcher(Fetcher):
                 item.filename = "toulouse." + info[-2] + ".html"
                 item.url = urlparse.urljoin(self.url, href)
                 item.content = None
-                item.setCheckState(Qt.Unchecked)
+                item.setCheckState(checked_dict[False])
                 if self.hasExistingFile(output_dir, item.filename):
                     item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
@@ -199,7 +199,7 @@ class AnchorageFetcher(Fetcher):
                 item.filename = href
                 item.url = urlparse.urljoin(self.url, href)
                 item.content = None
-                item.setCheckState(Qt.Unchecked)
+                item.setCheckState(checked_dict[False])
                 if self.hasExistingFile(output_dir, href):
                     item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
@@ -250,7 +250,7 @@ class LondonFetcher(Fetcher):
                 item.filename = "london." + date.strftime("%Y%m%d%H%M")
                 item.url = message_url
                 item.content = text
-                item.setCheckState(Qt.Unchecked)
+                item.setCheckState(checked_dict[False])
                 if self.hasExistingFile(output_dir, item.filename):
                     item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
@@ -323,7 +323,7 @@ class LocalFileFetcher(Fetcher):
         item.filename = os.path.split(fileName)[1]
         item.url = urlparse.urljoin("file://", fileName)
         item.content = None
-        item.setCheckState(Qt.Unchecked)
+        item.setCheckState(checked_dict[False])
         vaaList.addItem(item)
 
 
@@ -362,7 +362,7 @@ class TestFetcher(Fetcher):
         item.url = self.url
         # We have already obtained the content.
         item.content = text
-        item.setCheckState(Qt.Unchecked)
+        item.setCheckState(checked_dict[False])
         if self.hasExistingFile(output_dir, item.filename):
             item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
         vaaList.addItem(item)
@@ -408,7 +408,7 @@ class Window(QMainWindow):
         layout = QGridLayout(contentWidget)
         
         fileMenu = self.menuBar().addMenu(self.tr("&File"))
-        newFileAction = fileMenu.addAction(self.tr("&New File..."), self.newFile,
+        fileMenu.addAction(self.tr("&New File..."), self.newFile,
             QKeySequence.New)
         openFileAction = fileMenu.addAction(self.tr("&Open File..."), self.fetchAdvisories,
             QKeySequence.Open)
@@ -430,7 +430,7 @@ class Window(QMainWindow):
 
         # Add a Help menu with about and documentation entries.
         helpMenu = self.menuBar().addMenu(self.tr("&Help"))
-        aboutAction = helpMenu.addAction(self.tr("&About..."), self.about)
+        helpMenu.addAction(self.tr("&About..."), self.about)
         
         # Create a list of downloaded advisories.
         self.vaaList = QListWidget()
@@ -442,12 +442,12 @@ class Window(QMainWindow):
         self.editButton = QPushButton(self.tr("&Edit message"))
         self.editButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         buttonLayout.addWidget(self.editButton)
-        buttonLayout.setAlignment(self.editButton, Qt.AlignHCenter)
+        buttonLayout.setAlignment(self.editButton, QtCore.Qt.AlignHCenter)
 
         self.convertButton = QPushButton(self.tr("&Convert messages"))
         self.convertButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         buttonLayout.addWidget(self.convertButton)
-        buttonLayout.setAlignment(self.convertButton, Qt.AlignHCenter)
+        buttonLayout.setAlignment(self.convertButton, QtCore.Qt.AlignHCenter)
 
         layout.addLayout(buttonLayout, 1, 0)
         
@@ -560,7 +560,7 @@ class Window(QMainWindow):
             os.system("mkdir -p " + commands.mkarg(self.output_dir))
         
         if fetcher.showBusy:
-            QApplication.setOverrideCursor(Qt.WaitCursor)
+            QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         
         fetcher.fetch(self.vaaList, self.output_dir)
 
@@ -579,7 +579,7 @@ class Window(QMainWindow):
 
         for i in range(self.vaaList.count()):
             item = self.vaaList.item(i)
-            if item.checkState() == Qt.Checked and \
+            if item.checkState() == checked_dict[True] and \
                not os.path.exists(os.path.join(self.output_dir, item.filename)):
                yet_to_convert = True
                break
@@ -589,7 +589,7 @@ class Window(QMainWindow):
         self.editButton.setEnabled(editable)
     
     def convertAdvisories(self):
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         
         kml_files = []
         failed_files = []
@@ -597,7 +597,7 @@ class Window(QMainWindow):
         for i in range(self.vaaList.count()):
         
             item = self.vaaList.item(i)
-            if not item.checkState() == Qt.Checked:
+            if  item.checkState() == checked_dict[False]:
                 continue
             
             href = item.filename
@@ -620,7 +620,7 @@ class Window(QMainWindow):
             if os.path.exists(kml_file):
                 QApplication.restoreOverrideCursor()
                 reply = QMessageBox.question(self, 'VAAC conversion',
-                "Converted file alredy exists. Do you want to convert again?", QMessageBox.Yes |
+                "Converted file %s  already exists. Do you want to convert again?" % kml_file, QMessageBox.Yes |
                 QMessageBox.No, QMessageBox.No)
 
                 if reply == QMessageBox.No:
@@ -628,7 +628,7 @@ class Window(QMainWindow):
                     self.updateWorkLog(isOK,hasConverted,message)
                     continue
 
-                QApplication.setOverrideCursor(Qt.WaitCursor)
+                QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
 
 
             if not item.content:
@@ -684,7 +684,7 @@ class Window(QMainWindow):
 
     
     # Use a decorator to avoid receiving the signal that includes a boolean value.
-    @pyqtSlot()
+    @QtCore.pyqtSlot()
     def showHideLogViewer(self, show = None):
     
         if show is None:
@@ -712,7 +712,7 @@ class Window(QMainWindow):
         if editDialog.exec_() == QDialog.Accepted:
             item.content = unicode(editDialog.textEdit.toPlainText())
             if oldContent != item.content:
-                item.setCheckState(Qt.Unchecked)
+                item.setCheckState(checked_dict[False])
 
         self.updateButtons()
     
