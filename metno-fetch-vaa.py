@@ -17,17 +17,17 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import sys
+import PyQt4.QtGui as QtGui
 
 from metno_fetch_vaa import LondonFetcher, ToulouseFetcher, LocalFileFetcher, \
-                            TestFetcher, QApplication, Window
+                            TestFetcher, Window
 
 if __name__ == "__main__":
 
-    app = QApplication(sys.argv)
+    app = QtGui.QApplication(sys.argv)
 
     fetchers = {u"London VAAC": LondonFetcher(),
                 u"Toulouse VAAC": ToulouseFetcher(),
-               #u"Anchorage VAAC": AnchorageFetcher(),
                 u"Local file": LocalFileFetcher(),
                 u"Test VAAC": TestFetcher()}
 
