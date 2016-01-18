@@ -618,9 +618,17 @@ class Window(QMainWindow):
             message = item.text()
 
             if os.path.exists(kml_file):
-                 message += " not converted. File already available in " + kml_file
-                 self.updateWorkLog(isOK,hasConverted,message)
-                 continue
+                QApplication.restoreOverrideCursor()
+                reply = QMessageBox.question(self, 'VAAC conversion',
+                "Converted file alredy exists. Do you want to convert again?", QMessageBox.Yes |
+                QMessageBox.No, QMessageBox.No)
+
+                if reply == QMessageBox.No:
+                    message += " not converted. File already available in " + kml_file
+                    self.updateWorkLog(isOK,hasConverted,message)
+                    continue
+
+                QApplication.setOverrideCursor(Qt.WaitCursor)
 
 
             if not item.content:
