@@ -19,7 +19,7 @@
 import commands, datetime, HTMLParser, os, subprocess, urllib2, urlparse
 
 import PyQt4.QtCore as QtCore
-from PyQt4.QtGui import *
+import PyQt4.QtGui as QtGui
 
 __version__ = "0.9.7"
 
@@ -152,7 +152,7 @@ class ToulouseFetcher(Fetcher):
                 info = href.split(".")
                 date = datetime.datetime.strptime(info[-2], "%Y%m%d%H%M").strftime("%Y-%m-%d %H:%M")
                 volcano = info[2].replace("_", " ")
-                item = QListWidgetItem("%s (%s)" % (date, volcano))
+                item = QtGui.QListWidgetItem("%s (%s)" % (date, volcano))
                 item.setFlags(self.defaultFlags)
                 # The name to use for the locally stored file needs to be
                 # in a suitable format so that Diana can read it as part of
@@ -162,7 +162,7 @@ class ToulouseFetcher(Fetcher):
                 item.content = None
                 item.setCheckState(checked_dict[False])
                 if self.hasExistingFile(output_dir, item.filename):
-                    item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
+                    item.setText(item.text() + " " + QtGui.QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
 
                 count += 1
@@ -194,14 +194,14 @@ class AnchorageFetcher(Fetcher):
                 # The date is encoded in the associated table text.
                 date = datetime.datetime.strptime(table_text[0], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
                 volcano = table_text[1].replace("_", " ")
-                item = QListWidgetItem("%s (%s)" % (date, volcano))
+                item = QtGui.QListWidgetItem("%s (%s)" % (date, volcano))
                 item.setFlags(self.defaultFlags)
                 item.filename = href
                 item.url = urlparse.urljoin(self.url, href)
                 item.content = None
                 item.setCheckState(checked_dict[False])
                 if self.hasExistingFile(output_dir, href):
-                    item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
+                    item.setText(item.text() + " " + QtGui.QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
 
                 count += 1
@@ -245,14 +245,14 @@ class LondonFetcher(Fetcher):
                 urls.add(message_url)
 
                 volcano, date, text = self.read_message(message_url)
-                item = QListWidgetItem("%s (%s)" % (date, volcano))
+                item = QtGui.QListWidgetItem("%s (%s)" % (date, volcano))
                 item.setFlags(self.defaultFlags)
                 item.filename = "london." + date.strftime("%Y%m%d%H%M")
                 item.url = message_url
                 item.content = text
                 item.setCheckState(checked_dict[False])
                 if self.hasExistingFile(output_dir, item.filename):
-                    item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
+                    item.setText(item.text() + " " + QtGui.QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
 
                 count += 1
@@ -310,7 +310,7 @@ class LocalFileFetcher(Fetcher):
 
     def fetch(self, vaaList, output_dir):
     
-        fileName = QFileDialog.getOpenFileName(None, QApplication.translate("LocalFileFetcher", "Open VAA File"))
+        fileName = QtGui.QFileDialog.getOpenFileName(None, QtGui.QApplication.translate("LocalFileFetcher", "Open VAA File"))
         
         if fileName.isEmpty():
             return
@@ -318,7 +318,7 @@ class LocalFileFetcher(Fetcher):
         fileName = unicode(fileName)
         
         vaaList.clear()
-        item = QListWidgetItem(fileName)
+        item = QtGui.QListWidgetItem(fileName)
         item.setFlags(self.defaultFlags)
         item.filename = os.path.split(fileName)[1]
         item.url = urlparse.urljoin("file://", fileName)
@@ -354,7 +354,7 @@ class TestFetcher(Fetcher):
                 # The volcano is encoded in the advisory.
                 volcano = line[8:].lstrip()
         
-        item = QListWidgetItem("%s (%s)" % (date.strftime("%Y-%m-%d %H:%M:%S"), volcano))
+        item = QtGui.QListWidgetItem("%s (%s)" % (date.strftime("%Y-%m-%d %H:%M:%S"), volcano))
         item.setFlags(self.defaultFlags)
         # Use a different name for the path instead of the path of the page on the site.
         item.filename = "test." + date.strftime("%Y%m%d%H%M")
@@ -364,38 +364,38 @@ class TestFetcher(Fetcher):
         item.content = text
         item.setCheckState(checked_dict[False])
         if self.hasExistingFile(output_dir, item.filename):
-            item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
+            item.setText(item.text() + " " + QtGui.QApplication.translate("Fetcher", "(converted)"))
         vaaList.addItem(item)
 
 
-class EditDialog(QDialog):
+class EditDialog(QtGui.QDialog):
 
     def __init__(self, content, parent = None):
 
-        QDialog.__init__(self, parent)
+        QtGui.QDialog.__init__(self, parent)
 
-        self.textEdit = QPlainTextEdit()
+        self.textEdit = QtGui.QPlainTextEdit()
         self.textEdit.setPlainText(content)
         
-        buttonBox = QDialogButtonBox()
-        buttonBox.addButton(QDialogButtonBox.Ok)
-        buttonBox.addButton(QDialogButtonBox.Cancel)
+        buttonBox = QtGui.QDialogButtonBox()
+        buttonBox.addButton(QtGui.QDialogButtonBox.Ok)
+        buttonBox.addButton(QtGui.QDialogButtonBox.Cancel)
         
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
-        layout = QVBoxLayout(self)
+        layout = QtGui.QVBoxLayout(self)
         layout.addWidget(self.textEdit)
         layout.addWidget(buttonBox)
 
         self.setWindowTitle(self.tr("Edit Message"))
 
 
-class Window(QMainWindow):
+class Window(QtGui.QMainWindow):
 
     def __init__(self, fetchers):
 
-        QMainWindow.__init__(self)
+        QtGui.QMainWindow.__init__(self)
 
         self.fetchers = fetchers
         self.settings = Settings("met.no", "metno-fetch-vaa")
@@ -404,14 +404,14 @@ class Window(QMainWindow):
                           os.path.join(os.getenv("HOME"), ".vaac"))
         self.workLog = ""
         
-        contentWidget = QWidget()
-        layout = QGridLayout(contentWidget)
+        contentWidget = QtGui.QWidget()
+        layout = QtGui.QGridLayout(contentWidget)
         
         fileMenu = self.menuBar().addMenu(self.tr("&File"))
         fileMenu.addAction(self.tr("&New File..."), self.newFile,
-            QKeySequence.New)
+            QtGui.QKeySequence.New)
         openFileAction = fileMenu.addAction(self.tr("&Open File..."), self.fetchAdvisories,
-            QKeySequence.Open)
+            QtGui.QKeySequence.Open)
         openFileAction.name = u"Local file"
 
         fileMenu.addSeparator()
@@ -426,26 +426,26 @@ class Window(QMainWindow):
                 action.name = name
         
         fileMenu.addSeparator()
-        fileMenu.addAction(self.tr("E&xit"), self.close, QKeySequence(QKeySequence.Quit))
+        fileMenu.addAction(self.tr("E&xit"), self.close, QtGui.QKeySequence(QtGui.QKeySequence.Quit))
 
         # Add a Help menu with about and documentation entries.
         helpMenu = self.menuBar().addMenu(self.tr("&Help"))
         helpMenu.addAction(self.tr("&About..."), self.about)
         
         # Create a list of downloaded advisories.
-        self.vaaList = QListWidget()
+        self.vaaList = QtGui.QListWidget()
         layout.addWidget(self.vaaList, 0, 0)
         
         # Add a panel of buttons.
-        buttonLayout = QHBoxLayout()
+        buttonLayout = QtGui.QHBoxLayout()
 
-        self.editButton = QPushButton(self.tr("&Edit message"))
-        self.editButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        self.editButton = QtGui.QPushButton(self.tr("&Edit message"))
+        self.editButton.setSizePolicy(QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Fixed)
         buttonLayout.addWidget(self.editButton)
         buttonLayout.setAlignment(self.editButton, QtCore.Qt.AlignHCenter)
 
-        self.convertButton = QPushButton(self.tr("&Convert messages"))
-        self.convertButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        self.convertButton = QtGui.QPushButton(self.tr("&Convert messages"))
+        self.convertButton.setSizePolicy(QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Fixed)
         buttonLayout.addWidget(self.convertButton)
         buttonLayout.setAlignment(self.convertButton, QtCore.Qt.AlignHCenter)
 
@@ -455,10 +455,10 @@ class Window(QMainWindow):
         layout.setRowStretch(1, 1)
 
         # Add a log viewer.
-        self.logViewer = QTextEdit()
+        self.logViewer = QtGui.QTextEdit()
         self.logViewer.setReadOnly(True)
-        self.showHideLogButton = QPushButton(self.tr("&Hide log"))
-        self.showHideLogButton.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        self.showHideLogButton = QtGui.QPushButton(self.tr("&Hide log"))
+        self.showHideLogButton.setSizePolicy(QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Fixed)
 
         layout.addWidget(self.logViewer, 3, 0)
         layout.addWidget(self.showHideLogButton, 4, 0)
@@ -507,7 +507,7 @@ class Window(QMainWindow):
 
     def about(self):
 
-        QMessageBox.about(self, self.tr("About this program"),
+        QtGui.QMessageBox.about(self, self.tr("About this program"),
             self.tr("<qt>Fetches Volcanic Ash Advisory (VAA) messages from certain "
                     "Volcanic Ash Advisory Centres (VAAC) and converts them to "
                     "Keyhole Markup Language (KML) files for use with Diana and "
@@ -516,7 +516,7 @@ class Window(QMainWindow):
     def newFile(self):
     
         # Ask for the name of the file.
-        volcano, success = QInputDialog.getText(self, self.tr("New File"),
+        volcano, success = QtGui.QInputDialog.getText(self, self.tr("New File"),
             self.tr("Volcano name:"))
         
         if success and volcano:
@@ -531,14 +531,14 @@ class Window(QMainWindow):
         try:
             open(fileName, "w").write("")
         except IOError:
-            QMessageBox.critical(self, self.tr("Error"),
+            QtGui.QMessageBox.critical(self, self.tr("Error"),
                 self.tr("Failed to create an empty file to use for a new message.\n"
                         'Please consult the documentation for support.'))
             return
         
         # Add an item to the list.
-        item = QListWidgetItem(fileName)
-        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        item = QtGui.QListWidgetItem(fileName)
+        item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
         item.filename = fileName
         item.url = urlparse.urljoin("file://", fileName)
         item.content = None
@@ -560,17 +560,17 @@ class Window(QMainWindow):
             os.system("mkdir -p " + commands.mkarg(self.output_dir))
         
         if fetcher.showBusy:
-            QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+            QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         
         fetcher.fetch(self.vaaList, self.output_dir)
 
         self.updateButtons()
         
         if fetcher.showBusy:
-            QApplication.restoreOverrideCursor()
+            QtGui.QApplication.restoreOverrideCursor()
             
             if self.vaaList.count() == 0:
-                QMessageBox.information(self, self.tr("Fetching from %1").arg(name),
+                QtGui.QMessageBox.information(self, self.tr("Fetching from %1").arg(name),
                     self.tr("No new messages available from %1.").arg(name))
 
     def updateButtons(self):
@@ -589,7 +589,7 @@ class Window(QMainWindow):
         self.editButton.setEnabled(editable)
     
     def convertAdvisories(self):
-        QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         
         kml_files = []
         failed_files = []
@@ -618,17 +618,17 @@ class Window(QMainWindow):
             message = item.text()
 
             if os.path.exists(kml_file):
-                QApplication.restoreOverrideCursor()
-                reply = QMessageBox.question(self, 'VAAC conversion',
-                "Converted file %s  already exists. Do you want to convert again?" % kml_file, QMessageBox.Yes |
-                QMessageBox.No, QMessageBox.No)
+                QtGui.QApplication.restoreOverrideCursor()
+                reply = QtGui.QMessageBox.question(self, 'VAAC conversion',
+                "Converted file %s  already exists. Do you want to convert again?" % kml_file, QtGui.QMessageBox.Yes |
+                QtGui.QMessageBox.No, QtGui.QMessageBox.No)
 
-                if reply == QMessageBox.No:
+                if reply == QtGui.QMessageBox.No:
                     message += " not converted. File already available in " + kml_file
                     self.updateWorkLog(isOK,hasConverted,message)
                     continue
 
-                QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+                QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
 
 
             if not item.content:
@@ -644,7 +644,7 @@ class Window(QMainWindow):
 
             open(vaa_file, "w").write(vaa_content)
             
-            QApplication.processEvents()
+            QtGui.QApplication.processEvents()
 
             # Convert the message in the HTML file to a KML file.
             s = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
@@ -657,13 +657,13 @@ class Window(QMainWindow):
 
             if s.wait() != 0:
                 failed_files.append(vaa_file)
-                item.setIcon(QApplication.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                item.setIcon(QtGui.QApplication.style().standardIcon(QtGui.QStyle.SP_MessageBoxWarning))
                 message += " conversion failed %s." % output
             else:
                 # Remove the HTML file.
                 os.remove(vaa_file)
                 kml_files.append(kml_file)
-                item.setText(item.text() + " " + QApplication.translate("Fetcher", "(converted)"))
+                item.setText(item.text() + " " + QtGui.QApplication.translate("Fetcher", "(converted)"))
                 message += " converted. File available in " + kml_file +" % s " % output
                 hasConverted=True
                 isOK=True
@@ -676,7 +676,7 @@ class Window(QMainWindow):
 
         self.updateButtons()
         
-        QApplication.restoreOverrideCursor()
+        QtGui.QApplication.restoreOverrideCursor()
     
     def showLog(self):
 
@@ -709,7 +709,7 @@ class Window(QMainWindow):
         editDialog = EditDialog(item.content[:], self)
         editDialog.restoreGeometry(self.settings.value("editdialog/geometry").toByteArray())
 
-        if editDialog.exec_() == QDialog.Accepted:
+        if editDialog.exec_() == QtGui.QDialog.Accepted:
             item.content = unicode(editDialog.textEdit.toPlainText())
             if oldContent != item.content:
                 item.setCheckState(checked_dict[False])

@@ -82,7 +82,7 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
 
             if not item.content:
                 item.content = urllib2.urlopen(item.url).read()
-            print item.text()
+            print item.text
             print item.content
             geom = self.showVAAC.geometry()
             print "geom:", geom.x(), geom.y(), geom.width(), geom.height()
