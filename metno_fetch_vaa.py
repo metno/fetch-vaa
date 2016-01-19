@@ -32,7 +32,7 @@ class Settings(QtCore.QSettings):
 
     def __init__(self, organisation, product):
 
-       QtCore.QSettings.__init__(self, organisation, product)
+        QtCore.QSettings.__init__(self, organisation, product)
     
     def value(self, key, default = QtCore.QVariant()):
     
@@ -69,6 +69,7 @@ class Parser(HTMLParser.HTMLParser):
         self.text = ""
         self.table_row = []
         self.tags = []
+        self.anchors = []
     
     def feed(self, data):
 
@@ -486,20 +487,19 @@ class Window(QtGui.QMainWindow):
 
     def updateWorkLog(self, isOK, hasConverted, message):
         if isOK:
-            color="green"
+            color = "green"
         else:
-            color ="red"
+            color = "red"
 
         if hasConverted:
             header = "VAAC message converted"
         else:
-            header="VAAC message not converted"
+            header = "VAAC message not converted"
 
-        import datetime
         mytime = datetime.datetime.now().isoformat()
-        logEntry= "<i>%s</i> <b > : <font color='%s'> %s <br></font></b>" % (mytime, color,header)
+        logEntry = "<i>%s</i> <b > : <font color='%s'> %s <br></font></b>" % (mytime, color,header)
 
-        logEntry+= " %s <p>" % message
+        logEntry += " %s <p>" % message
 
         self.logViewer.insertHtml(logEntry)
 
@@ -580,9 +580,9 @@ class Window(QtGui.QMainWindow):
         for i in range(self.vaaList.count()):
             item = self.vaaList.item(i)
             if item.checkState() == checked_dict[True] and \
-               not os.path.exists(os.path.join(self.output_dir, item.filename)):
-               yet_to_convert = True
-               break
+                not os.path.exists(os.path.join(self.output_dir, item.filename)):
+                yet_to_convert = True
+                break
 
         self.convertButton.setEnabled(yet_to_convert)
         editable = self.vaaList.count() > 0 and self.vaaList.currentRow() != -1
@@ -613,8 +613,8 @@ class Window(QtGui.QMainWindow):
             
             kml_file = os.path.join(self.output_dir, kml_file)
 
-            hasConverted=False
-            isOK=True
+            hasConverted = False
+            isOK = True
             message = item.text()
 
             if os.path.exists(kml_file):
@@ -625,7 +625,7 @@ class Window(QtGui.QMainWindow):
 
                 if reply == QtGui.QMessageBox.No:
                     message += " not converted. File already available in " + kml_file
-                    self.updateWorkLog(isOK,hasConverted,message)
+                    self.updateWorkLog(isOK, hasConverted, message)
                     continue
 
                 QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -647,15 +647,15 @@ class Window(QtGui.QMainWindow):
             QtGui.QApplication.processEvents()
 
             # Convert the message in the HTML file to a KML file.
-            s = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
-                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            sconvert = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 
 
-            output=s.stdout.read()
+            output = sconvert.stdout.read()
 
 
-            if s.wait() != 0:
+            if sconvert.wait() != 0:
                 failed_files.append(vaa_file)
                 item.setIcon(QtGui.QApplication.style().standardIcon(QtGui.QStyle.SP_MessageBoxWarning))
                 message += " conversion failed %s." % output
@@ -665,10 +665,10 @@ class Window(QtGui.QMainWindow):
                 kml_files.append(kml_file)
                 item.setText(item.text() + " " + QtGui.QApplication.translate("Fetcher", "(converted)"))
                 message += " converted. File available in " + kml_file +" % s " % output
-                hasConverted=True
-                isOK=True
+                hasConverted = True
+                isOK = True
 
-            self.updateWorkLog(hasConverted,isOK,message)
+            self.updateWorkLog(hasConverted, isOK, message)
         
         # Update the log viewer if it is already shown.
         if self.logViewer.isVisible():
@@ -679,8 +679,7 @@ class Window(QtGui.QMainWindow):
         QtGui.QApplication.restoreOverrideCursor()
     
     def showLog(self):
-
-            self.showHideLogViewer(True)
+        self.showHideLogViewer(True)
 
     
     # Use a decorator to avoid receiving the signal that includes a boolean value.

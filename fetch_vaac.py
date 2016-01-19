@@ -16,6 +16,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+""""
+Download the contents of a VAAC message
+and convert it to a kml-file.
+"""""
+
 from PyQt4 import QtCore, QtGui
 import sys
 import os
@@ -24,59 +29,69 @@ import subprocess
 import selectVaac
 import metno_fetch_vaa
 
-try:
-    _fromUtf8 = QtCore.QString.fromUtf8
-except AttributeError:
-    _fromUtf8 = lambda s: s
-
-
 
 class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
-    def __init__(self,fetchers,output_dir, parent=None):
-        super(MainDialog,self).__init__(parent)
+    """" gui for selecting a VAAC message to download """
+    def __init__(self, fetchers, output_dir, parent=None):
+        super(MainDialog, self).__init__(parent)
         self.setupUi(self)
         self.fetchers = fetchers
         self.output_dir = output_dir
         names = self.fetchers.keys()
         names.sort()
-        vaacs=QtCore.QStringList(names)
-        vaacs.insert(0,"Select VAAC")
-        self.comboBox.insertItems(1,vaacs)
-        self.comboBox.currentIndexChanged[QtCore.QString].connect(self.updateList)
-        self.vaaList.currentItemChanged.connect(self.vaaListItemChanged)
-        self.pushButton.clicked.connect(self.showVAACmessage)
-        self.vaaList.doubleClicked.connect(self.showVAACmessage)
+        vaacs = QtCore.QStringList(names)
+        vaacs.insert(0, "Select VAAC")
+        self.comboBox.insertItems(1, vaacs)
+        self.comboBox.currentIndexChanged[QtCore.QString]. \
+            connect(self.update_list)
+        self.vaaList.currentItemChanged.connect(self.vaa_listitem_changed)
+        self.pushButton.clicked.connect(self.show_vaac_message)
+        self.vaaList.doubleClicked.connect(self.show_vaac_message)
 
-        self.showVAAC = QtGui.QTextBrowser()
+        self.show_vaac = QtGui.QTextBrowser()
 
-        self.showVAAC.setGeometry(10,10,460,380)
+        self.show_vaac.setGeometry(10, 10, 460, 380)
 
-    def updateList(self, vaac):
+    def update_list(self, vaac):
+        """ update the list of VAAC messages,
+            when a new VAAC centre has been selected
+        """
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.vaaList.clear()
-        self.fetchers[str(vaac)].fetch(self.vaaList,self.output_dir)
+        self.fetchers[str(vaac)].fetch(self.vaaList, self.output_dir)
 
         for i in range(self.vaaList.count()):
             item = self.vaaList.item(i)
             item.setData(QtCore.Qt.CheckStateRole, QtCore.QVariant())
-            item.setFlags(QtCore.Qt.ItemIsSelectable| QtCore.Qt.ItemIsEnabled )
+            item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
 
         QtGui.QApplication.restoreOverrideCursor()
 
     def accept(self):
-
-        self.convertAdvisories()
-        self.printVAACmessage()
-        super(MainDialog,self).accept()
+        """
+            when OK is clicked, convert the advisory,
+             print the VAAC message to stdout
+        """
+        self.convert_advisories()
+        self.print_vaac_message()
+        super(MainDialog, self).accept()
 
     def reject(self):
+        """
+            when Cancel is clicked, do not convert the advisory,
+            print the VAAC message to stdout
+        """
+        self.print_vaac_message()
 
-        self.printVAACmessage()
+        super(MainDialog, self).reject()
 
-        super(MainDialog,self).reject()
-
-    def printVAACmessage(self):
-        if self.showVAAC.isVisible():
+    def print_vaac_message(self):
+        """
+            print the VAAC message contents
+            as well as the geometry
+            designed to be read by another process
+        """
+        if self.show_vaac.isVisible():
             row = self.vaaList.currentRow()
             item = self.vaaList.item(row)
 
@@ -84,31 +99,40 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
                 item.content = urllib2.urlopen(item.url).read()
             print item.text
             print item.content
-            geom = self.showVAAC.geometry()
+            geom = self.show_vaac.geometry()
             print "geom:", geom.x(), geom.y(), geom.width(), geom.height()
-            self.showVAAC.close()
+            self.show_vaac.close()
 
-    def vaaListItemChanged(self):
-        if self.showVAAC.isVisible():
-            self.showVAACmessage()
+    def vaa_listitem_changed(self):
+        """ Display the new VAAC message,
+            when we have selected it
+            only if the show_vaac window is open
+        """
+        if self.show_vaac.isVisible():
+            self.show_vaac_message()
 
-    def showVAACmessage(self):
+    def show_vaac_message(self):
+        """ download the VAAC message if not already done
+            display it in the show_vaac window
+        """
         row = self.vaaList.currentRow()
         item = self.vaaList.item(row)
 
         if not item.content:
             item.content = urllib2.urlopen(item.url).read()
 
-        self.showVAAC.setText(item.content)
-        self.showVAAC.setWindowTitle(item.text())
-        self.showVAAC.show()
+        self.show_vaac.setText(item.content)
+        self.show_vaac.setWindowTitle(item.text())
+        self.show_vaac.show()
 
-    def convertAdvisories(self):
+    def convert_advisories(self):
+        """
+            convert the selected advisory
+        """
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
 
         kml_files = []
         failed_files = []
-        self.workLog = {}
 
         row = self.vaaList.currentRow()
         if row == -1:
@@ -127,8 +151,8 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
 
         kml_file = os.path.join(self.output_dir, kml_file)
         message = item.text()
-        if  os.path.exists(kml_file):
-            message+=" already exists in " + kml_file
+        if os.path.exists(kml_file):
+            message += " already exists in " + kml_file
         else:
 
             if not item.content:
@@ -145,49 +169,60 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
 
             QtGui.QApplication.processEvents()
 
-
             # Convert the message in the HTML file to a KML file.
-            s = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
-                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            sconvert = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT)
 
             message = item.text()
 
-            if s.wait() != 0:
+            if sconvert.wait() != 0:
                 failed_files.append(vaa_file)
-                item.setIcon(QtGui.QApplication.style().standardIcon(QtGui.QStyle.SP_MessageBoxWarning))
+                assert isinstance(QtGui.QApplication.style().
+                                  standardIconobject, )
+                item.setIcon(QtGui.QApplication.style().
+                             standardIcon(QtGui.QStyle.SP_MessageBoxWarning))
                 message += " conversion failed."
             else:
                 # Remove the HTML file.
                 os.remove(vaa_file)
                 kml_files.append(kml_file)
-                item.setText(item.text() + " " + QtGui.QApplication.translate("Fetcher", "(converted)"))
+                item.setText(item.text() + " " +
+                             QtGui.QApplication.translate("Fetcher",
+                                                          "(converted)"))
                 message += " converted. File available in " + kml_file
 
-        print kml_file;
+        print kml_file
 
         QtGui.QApplication.restoreOverrideCursor()
         QtGui.QMessageBox.information(self, "VAAC conversion", message)
 
-if __name__ == "__main__":
 
+
+
+
+if __name__ == "__main__":
 
     if len(sys.argv) < 2:
         sys.stderr.write("Usage: fetch_vaac.py <directory for files>\n")
         sys.exit(1)
 
-    output_dir = sys.argv[1]
+    vaac_output_dir = sys.argv[1]
 
-    if not os.path.exists(output_dir):
+    if not os.path.exists(vaac_output_dir):
         try:
-            os.mkdir(output_dir)
+            os.mkdir(vaac_output_dir)
         except OSError:
-            sys.stderr.write("Failed to create output directory: '%s'\n" % output_dir)
+            sys.stderr.write("Failed to create output directory: '%s'\n"
+                             % vaac_output_dir)
             sys.exit(1)
 
-    fetchers = {u"London VAAC": metno_fetch_vaa.LondonFetcher(), u"Toulouse VAAC": metno_fetch_vaa.ToulouseFetcher(), u"Test VAAC": metno_fetch_vaa.TestFetcher()}
+    vaac_fetchers = {u"London VAAC": metno_fetch_vaa.LondonFetcher(),
+                     u"Toulouse VAAC": metno_fetch_vaa.ToulouseFetcher(),
+                     u"Test VAAC": metno_fetch_vaa.TestFetcher()}
 
     app = QtGui.QApplication(sys.argv)
-    form = MainDialog(fetchers,output_dir)
+    form = MainDialog(vaac_fetchers, vaac_output_dir)
     form.setWindowFlags(form.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
     form.show()
 
