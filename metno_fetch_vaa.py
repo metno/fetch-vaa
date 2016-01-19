@@ -20,6 +20,7 @@ import commands, datetime, HTMLParser, os, subprocess, urllib2, urlparse
 
 import PyQt4.QtCore as QtCore
 import PyQt4.QtGui as QtGui
+import webbrowser
 
 __version__ = "0.9.7"
 
@@ -113,7 +114,8 @@ class Fetcher:
 
     showBusy = True
     showInMenu = True
-    defaultFlags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsUserCheckable
+    defaultFlags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsSelectable
+
 
     def hasExistingFile(self, output_dir, href):
 
@@ -432,6 +434,7 @@ class Window(QtGui.QMainWindow):
         # Add a Help menu with about and documentation entries.
         helpMenu = self.menuBar().addMenu(self.tr("&Help"))
         helpMenu.addAction(self.tr("&About..."), self.about)
+        helpMenu.addAction(self.tr("&User Documentation"),self.showdoc)
         
         # Create a list of downloaded advisories.
         self.vaaList = QtGui.QListWidget()
@@ -466,8 +469,6 @@ class Window(QtGui.QMainWindow):
         self.showHideLogViewer(self.settings.value("window/log", False))
 
         # Make connections.
-        self.vaaList.currentItemChanged.connect(self.showLog)
-        self.vaaList.itemActivated.connect(self.showLog)
         self.vaaList.currentItemChanged.connect(self.updateButtons)
         self.vaaList.itemChanged.connect(self.updateButtons)
         self.vaaList.itemActivated.connect(self.updateButtons)
@@ -512,7 +513,12 @@ class Window(QtGui.QMainWindow):
                     "Volcanic Ash Advisory Centres (VAAC) and converts them to "
                     "Keyhole Markup Language (KML) files for use with Diana and "
                     "Ted.<p><b>Version:</b> %1</qt>").arg(__version__))
-    
+
+    def showdoc(self):
+        url = 'https://dokit.met.no/fou/kl/prosjekter/eemep/eemep_userdoc'
+        # Open URL in a new tab, if a browser window is already open.
+        webbrowser.open_new_tab(url + 'doc/')
+
     def newFile(self):
     
         # Ask for the name of the file.
