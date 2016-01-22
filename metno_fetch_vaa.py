@@ -162,6 +162,7 @@ class ToulouseFetcher(Fetcher):
                 # a collection.
                 item.filename = "toulouse." + info[-2] + ".html"
                 item.url = urlparse.urljoin(self.url, href)
+                item.vag = self.get_vag_url(p,info)
                 item.content = None
                 item.setCheckState(checked_dict[False])
                 if self.hasExistingFile(output_dir, item.filename):
@@ -171,6 +172,19 @@ class ToulouseFetcher(Fetcher):
                 count += 1
                 if count == self.number_to_fetch:
                     break
+
+    def get_vag_url(self,parser,info):
+
+            datestring = ".".join(info[-3:-2])
+            volcano = info[2].replace("_", " ")
+            for href, text, table_text in parser.anchors:
+                if volcano in href and datestring in href and href.endswith("png"):
+                    if "(VAG)" in text:
+                       vag_url = urlparse.urljoin(self.url, href)
+                       return vag_url
+            return None
+
+
 
 
 class AnchorageFetcher(Fetcher):
@@ -201,6 +215,7 @@ class AnchorageFetcher(Fetcher):
                 item.setFlags(self.defaultFlags)
                 item.filename = href
                 item.url = urlparse.urljoin(self.url, href)
+                item.vag=None
                 item.content = None
                 item.setCheckState(checked_dict[False])
                 if self.hasExistingFile(output_dir, href):
@@ -254,6 +269,7 @@ class LondonFetcher(Fetcher):
                 item.url = message_url
                 item.content = text
                 item.setCheckState(checked_dict[False])
+                item.vag = self.get_vag_url(p,table_text)
                 if self.hasExistingFile(output_dir, item.filename):
                     item.setText(item.text() + " " + QtGui.QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
@@ -305,6 +321,16 @@ class LondonFetcher(Fetcher):
         return volcano, date, text
 
 
+    def get_vag_url(self,parser,table_text_to_find):
+
+          for href, text, table_text in parser.anchors:
+                if table_text==table_text_to_find:
+                    if text == "VAG" and href.endswith(".png"):
+                        vag_url = urlparse.urljoin(self.url, href)
+                        return vag_url
+
+          return None
+
 class LocalFileFetcher(Fetcher):
 
     returns_html = False
@@ -325,6 +351,7 @@ class LocalFileFetcher(Fetcher):
         item.setFlags(self.defaultFlags)
         item.filename = os.path.split(fileName)[1]
         item.url = urlparse.urljoin("file://", fileName)
+        item.vag=None
         item.content = None
         item.setCheckState(checked_dict[False])
         vaaList.addItem(item)
@@ -363,6 +390,7 @@ class TestFetcher(Fetcher):
         item.filename = "test." + date.strftime("%Y%m%d%H%M")
         # Store the original location.
         item.url = self.url
+        item.vag=None
         # We have already obtained the content.
         item.content = text
         item.setCheckState(checked_dict[False])
@@ -445,11 +473,20 @@ class Window(QtGui.QMainWindow):
 
         self.editButton = QtGui.QPushButton(self.tr("&Edit message"))
         self.editButton.setSizePolicy(QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Fixed)
+        self.editButton.setToolTip(self.tr("Edit text of the selected VAAC message"))
         buttonLayout.addWidget(self.editButton)
         buttonLayout.setAlignment(self.editButton, QtCore.Qt.AlignHCenter)
 
+        self.vagButton = QtGui.QPushButton(self.tr("&Show VAG(graphics)"))
+        self.vagButton.setSizePolicy(QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Fixed)
+        self.vagButton.setToolTip(self.tr("Show VAG graphics corresponding to selected VAAC message"))
+        buttonLayout.addWidget(self.vagButton)
+        buttonLayout.setAlignment(self.vagButton, QtCore.Qt.AlignHCenter)
+
+
         self.convertButton = QtGui.QPushButton(self.tr("&Convert messages"))
         self.convertButton.setSizePolicy(QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Fixed)
+        self.convertButton.setToolTip(self.tr("Convert one or more checked VAAC messages to kml-format, so they can be displayed in Diana"))
         buttonLayout.addWidget(self.convertButton)
         buttonLayout.setAlignment(self.convertButton, QtCore.Qt.AlignHCenter)
 
@@ -473,6 +510,7 @@ class Window(QtGui.QMainWindow):
         self.vaaList.itemChanged.connect(self.updateButtons)
         self.vaaList.itemActivated.connect(self.updateButtons)
         self.editButton.clicked.connect(self.editMessage)
+        self.vagButton.clicked.connect(self.showVAG)
         self.convertButton.clicked.connect(self.convertAdvisories)
         self.showHideLogButton.clicked.connect(self.showHideLogViewer)
         
@@ -517,7 +555,17 @@ class Window(QtGui.QMainWindow):
     def showdoc(self):
         url = 'https://dokit.met.no/fou/kl/prosjekter/eemep/eemep_userdoc'
         # Open URL in a new tab, if a browser window is already open.
-        webbrowser.open_new_tab(url + 'doc/')
+        webbrowser.open_new_tab(url)
+
+
+    def showVAG(self):
+        row = self.vaaList.currentRow()
+        item = self.vaaList.item(row)
+        url = item.vag
+        if url is not None:
+            webbrowser.open_new_tab(url)
+        else:
+            QtGui.QMessageBox.information(self, self.tr("Show VAG(Graphics"), self.tr("No graphics found for %s " % item.text()))
 
     def newFile(self):
     
@@ -593,6 +641,7 @@ class Window(QtGui.QMainWindow):
         self.convertButton.setEnabled(yet_to_convert)
         editable = self.vaaList.count() > 0 and self.vaaList.currentRow() != -1
         self.editButton.setEnabled(editable)
+        self.vagButton.setEnabled(editable)
     
     def convertAdvisories(self):
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
