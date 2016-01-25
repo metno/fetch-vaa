@@ -1,3 +1,11 @@
+metno-fetch-vaa (0.9.8-1ubuntu1) precise; urgency=low
+
+  * Show VAG graphics for selected message
+  * Link to user documentation
+  * make items selectable
+
+ -- Helen Korsmo <helen.korsmo@met.no>  Mon, 25 Jan 2016 12:53:11 +0100
+
 metno-fetch-vaa (0.9.7-1ubuntu1) precise; urgency=low
 
   *  Released a new version with upstream fixes

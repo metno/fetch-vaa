@@ -22,7 +22,7 @@ import PyQt4.QtCore as QtCore
 import PyQt4.QtGui as QtGui
 import webbrowser
 
-__version__ = "0.9.7"
+__version__ = "0.9.8"
 
 checked_dict = {False: QtCore.Qt.Unchecked, True: QtCore.Qt.Checked}
 
