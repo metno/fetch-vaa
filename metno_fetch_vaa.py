@@ -553,7 +553,7 @@ class Window(QtGui.QMainWindow):
                     "Ted.<p><b>Version:</b> %1</qt>").arg(__version__))
 
     def showdoc(self):
-        url = 'https://dokit.met.no/fou/kl/prosjekter/eemep/eemep_userdoc'
+        url = 'https://dokit.met.no/fou/kl/prosjekter/eemep/eemep_userdoc#handling_a_vaac_message_in_diana_and_ted'
         # Open URL in a new tab, if a browser window is already open.
         webbrowser.open_new_tab(url)
 
