@@ -714,6 +714,7 @@ class Window(QtGui.QMainWindow):
                 failed_files.append(vaa_file)
                 item.setIcon(QtGui.QApplication.style().standardIcon(QtGui.QStyle.SP_MessageBoxWarning))
                 message += " conversion failed %s." % output
+                isOK = False
             else:
                 # Remove the HTML file.
                 os.remove(vaa_file)
@@ -723,7 +724,7 @@ class Window(QtGui.QMainWindow):
                 hasConverted = True
                 isOK = True
 
-            self.updateWorkLog(hasConverted, isOK, message)
+            self.updateWorkLog(isOK, hasConverted, message)
         
         # Update the log viewer if it is already shown.
         if self.logViewer.isVisible():
