@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.9.9-1ubuntu1) precise; urgency=low
+
+  * Fixed bug in worklog
+
+ -- Helen Korsmo <helen.korsmo@met.no>  Wed, 03 Feb 2016 14:06:51 +0100
+
 metno-fetch-vaa (0.9.8-1ubuntu1) precise; urgency=low
 
   * Show VAG graphics for selected message
