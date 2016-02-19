@@ -22,7 +22,7 @@ import PyQt4.QtCore as QtCore
 import PyQt4.QtGui as QtGui
 import webbrowser
 
-__version__ = "0.9.9"
+__version__ = "0.9.10"
 
 checked_dict = {False: QtCore.Qt.Unchecked, True: QtCore.Qt.Checked}
 
@@ -592,7 +592,7 @@ class Window(QtGui.QMainWindow):
         
         # Add an item to the list.
         item = QtGui.QListWidgetItem(fileName)
-        item.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
+        item.setFlags(Fetcher.defaultFlags)
         item.filename = fileName
         item.url = urlparse.urljoin("file://", fileName)
         item.content = None
@@ -633,10 +633,10 @@ class Window(QtGui.QMainWindow):
 
         for i in range(self.vaaList.count()):
             item = self.vaaList.item(i)
-            if item.checkState() == checked_dict[True] and \
-                not os.path.exists(os.path.join(self.output_dir, item.filename)):
-                yet_to_convert = True
+            if item.checkState() == checked_dict[True]:
+                yet_to_convert=True
                 break
+
 
         self.convertButton.setEnabled(yet_to_convert)
         editable = self.vaaList.count() > 0 and self.vaaList.currentRow() != -1
