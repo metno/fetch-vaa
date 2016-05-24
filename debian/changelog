@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.9.11-1ubuntu1) unstable; urgency=low
+
+  * fixed download from London VAAC
+
+ -- Helen Korsmo <helen.korsmo@met.no>  Tue, 24 May 2016 17:16:25 +0200
+
 metno-fetch-vaa (0.9.10-1ubuntu1) precise; urgency=low
 
   * Fixed bug in  "New file" functionality

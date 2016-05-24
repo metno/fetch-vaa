@@ -22,7 +22,7 @@ import PyQt4.QtCore as QtCore
 import PyQt4.QtGui as QtGui
 import webbrowser
 
-__version__ = "0.9.10"
+__version__ = "0.9.11"
 
 checked_dict = {False: QtCore.Qt.Unchecked, True: QtCore.Qt.Checked}
 
@@ -240,7 +240,9 @@ class LondonFetcher(Fetcher):
     
         "Reads the messages available from the URL for the current VAA centre."
 
-        html = urllib2.urlopen(self.url).read()
+        req = urllib2.Request(self.url, headers={'User-Agent' : "Magic Browser"}) 
+        print("Open ", self.url)
+        html = urllib2.urlopen(req).read()
         p = Parser()
         p.feed(html)
         p.close()
@@ -280,7 +282,8 @@ class LondonFetcher(Fetcher):
 
     def read_message(self, url):
     
-        html = urllib2.urlopen(url).read()
+        req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
+        html = urllib2.urlopen(req).read()
 
         # The London VAAC currently shows advisories in HTML pages.
         # We just extract what we can find.
