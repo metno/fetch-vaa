@@ -1,9 +1,9 @@
 Source: metno-fetch-vaa
-Maintainer: David Boddie <david.boddie@met.no>
+Maintainer: Helen Korsmo <helen.korsmo@met.no>
 Section: python
 Priority: optional
-Build-Depends: python, debhelper (>= 7.4.3)
-Standards-Version: 3.9.1
+Build-Depends: python,python-qt4,debhelper (>= 9.0.0)
+Standards-Version: 3.9.2
 
 Package: metno-fetch-vaa
 Architecture: all

@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.9.11-1ubuntu2) precise; urgency=low
+
+  * new debian package
+
+ -- Helen Korsmo <helen.korsmo@met.no>  Thu, 25 Aug 2016 16:12:48 +0200
+
 metno-fetch-vaa (0.9.11-1ubuntu1) unstable; urgency=low
 
   * fixed download from London VAAC
