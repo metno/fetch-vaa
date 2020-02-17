@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (C) 2014 MET Norway (met.no)
+# Copyright (C) 2014, 2020 MET Norway (met.no)
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,22 +48,22 @@ ENDPLOT
 def create_input_files(setup_file, directory):
 
     for path in glob.glob(os.path.join(directory, "*.kml")):
-    
+
         path = os.path.abspath(path)
         stem, suffix = os.path.splitext(path)
         input_file = stem + os.extsep + "input"
         output_file = stem + os.extsep + "png"
-        
+
         tree = ElementTree.parse(path)
         root = tree.getroot()
         times = map(lambda element: element.text, root.findall(".//{http://www.opengis.net/kml/2.2}begin"))
-        
+
         rows = (len(times) + 1)/2
         columns = min(len(times), 2)
 
         width = 400 * columns
         height = 400 * rows
-        
+
         details = {
             "program": sys.argv[0],
             "date time": datetime.datetime.now().isoformat(" "),
@@ -74,15 +74,15 @@ def create_input_files(setup_file, directory):
             "rows": rows,
             "columns": columns
             }
-        
+
         f = open(input_file, "w")
         f.write(template % details)
-        
+
         row = 0
         column = 0
-        
+
         for time in times:
-        
+
             details = {
                 "plot time": time,
                 "row": row,
@@ -93,7 +93,7 @@ def create_input_files(setup_file, directory):
             column = (column + 1) % 2
             if column == 0:
                 row += 1
-        
+
         f.close()
 
 def run_bdiana(bdiana, directory):
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 4:
         sys.stderr.write("Usage: %s <bdiana executable> <setup file> <directory containing KML files>\n" % sys.argv[0])
         sys.exit(1)
-    
+
     bdiana = sys.argv[1]
     setup_file = sys.argv[2]
     directory = sys.argv[3]
@@ -117,4 +117,3 @@ if __name__ == "__main__":
     create_input_files(setup_file, directory)
     run_bdiana(bdiana, directory)
     sys.exit()
-
