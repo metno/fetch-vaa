@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (C) 2014 MET Norway (met.no)
+# Copyright (C) 2014, 2020 MET Norway (met.no)
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,14 +17,14 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import sys
-import PyQt4.QtGui as QtGui
+import PyQt5.QtWidgets as QtWidgets
 
 from metno_fetch_vaa import LondonFetcher, ToulouseFetcher, LocalFileFetcher, \
                             TestFetcher, Window
 
 if __name__ == "__main__":
 
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
 
     fetchers = {u"London VAAC": LondonFetcher(),
                 u"Toulouse VAAC": ToulouseFetcher(),
