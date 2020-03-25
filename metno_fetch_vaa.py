@@ -55,7 +55,6 @@ class Parser(html.parser.HTMLParser):
         self.href = ""
         self.text = ""
         self.table_row = []
-        self.tags = []
         self.anchors = []
 
     def feed(self, data):
@@ -68,8 +67,6 @@ class Parser(html.parser.HTMLParser):
         html.parser.HTMLParser.feed(self, data)
 
     def handle_starttag(self, tag, attrs):
-        self.tags.append(tag)
-
         if tag == "a":
             d = dict(attrs)
             self.href = ""
@@ -80,23 +77,18 @@ class Parser(html.parser.HTMLParser):
         elif tag == "tr":
             self.table_row = []
 
-        self.text = ""
+
 
     def handle_data(self, data):
-
         self.text += data.strip()
 
-    def handle_endtag(self, tag):
 
+    def handle_endtag(self, tag):
         if tag == "a":
             self.anchors.append((self.href, self.text, self.table_row))
         elif tag == "td":
             self.table_row.append(self.text)
-
-        # Discard any non-matching end tags.
-        while self.tags:
-            if self.tags.pop() == tag:
-                break
+            self.text = ""
 
 
 
@@ -283,11 +275,6 @@ class LondonFetcher(Fetcher):
 
         for href, text, table_text in p.anchors:
 
-            print(":::::::::::::::::")
-            print("'" + text + "'")
-            print("'" + href + "'")
-            print(table_text)
-
             if text == "Advisory" and href != "":
 
                 # The date is encoded in the associated table text.
@@ -306,7 +293,7 @@ class LondonFetcher(Fetcher):
                 item.url = message_url
                 item.content = text
                 item.setCheckState(checked_dict[False])
-                item.vag = self.get_vag_url(p,table_text)
+                item.vag = self.get_vag_url(p, table_text)
                 if self.hasExistingFile(output_dir, item.filename):
                     item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
@@ -343,7 +330,7 @@ class LondonFetcher(Fetcher):
             if not line:
                 continue
 
-            active = (active or line.startswith("VA ADVISORY"))
+            active = (active or line.startswith("VA ADVISORY") or line.startswith("VA EXTENDED ADVISORY"))
             if not active:
                 continue
 
@@ -361,8 +348,6 @@ class LondonFetcher(Fetcher):
                 # The volcano is encoded in the advisory.
                 volcano = line[8:].lstrip()
 
-        print(text)
-
         return volcano, date, text
 
 
@@ -370,7 +355,7 @@ class LondonFetcher(Fetcher):
 
           for href, text, table_text in parser.anchors:
                 if table_text==table_text_to_find:
-                    if text == "VAG" and href.endswith(".png"):
+                    if text == "Graphic" and href != "":
                         vag_url = urllib.parse.urljoin(self.url, href)
                         return vag_url
 
@@ -754,33 +739,23 @@ class Window(QtWidgets.QMainWindow):
 
             # Convert the message in the HTML file to a KML file.
             try:
-                #FIXME: path here
-                #sconvert = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
-                sconvert = subprocess.Popen(["/home/andreb/projects/vaa-kml/metno-vaa-kml", vaa_file],
-                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            except FileNotFoundError as e:
+                output = subprocess.check_call(["/usr/bin/metno-vaa-kml", vaa_file],
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                        timeout=20)
+            except (FileNotFoundError, subprocess.TimeoutExpired) as e:
                 failed_files.append(vaa_file)
                 item.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxWarning))
                 message += " conversion failed %s." % str(e)
                 isOK = False
-                return
 
 
 
-            output = sconvert.stdout.read()
-
-
-            if sconvert.wait() != 0:
-                failed_files.append(vaa_file)
-                item.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxWarning))
-                message += " conversion failed %s." % output
-                isOK = False
-            else:
+            if isOK:
                 # Remove the HTML file.
                 os.remove(vaa_file)
                 kml_files.append(kml_file)
                 item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
-                message += " converted. File available in " + kml_file +" % s " % output
+                message += " converted. File available in " + kml_file + " % s " % output
                 hasConverted = True
                 isOK = True
 
@@ -822,7 +797,7 @@ class Window(QtWidgets.QMainWindow):
         oldContent = item.content
 
         editDialog = EditDialog(item.content[:], self)
-        editDialog.restoreGeometry(self.settings.value("editdialog/geometry").toByteArray())
+        editDialog.restoreGeometry(self.settings.value("editdialog/geometry"))
 
         if editDialog.exec_() == QtWidgets.QDialog.Accepted:
             item.content = unicode(editDialog.textEdit.toPlainText())
