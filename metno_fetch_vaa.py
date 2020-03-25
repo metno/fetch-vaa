@@ -22,6 +22,7 @@ import PyQt5.QtCore as QtCore
 import PyQt5.QtGui as QtGui
 import PyQt5.QtWidgets as QtWidgets
 import webbrowser
+import re
 
 __version__ = "0.9.12"
 
@@ -54,20 +55,21 @@ class Parser(html.parser.HTMLParser):
         self.href = ""
         self.text = ""
         self.table_row = []
-        self.tags = []
         self.anchors = []
 
     def feed(self, data):
 
         self.anchors = []
+        try:
+            data = data.decode()
+        except (UnicodeDecodeError, AttributeError):
+            pass
         html.parser.HTMLParser.feed(self, data)
 
     def handle_starttag(self, tag, attrs):
-
-        self.tags.append(tag)
-
         if tag == "a":
             d = dict(attrs)
+            self.href = ""
             try:
                 self.href = d["href"]
             except KeyError:
@@ -75,24 +77,53 @@ class Parser(html.parser.HTMLParser):
         elif tag == "tr":
             self.table_row = []
 
-        self.text = ""
+
 
     def handle_data(self, data):
+        self.text += data.strip()
 
-        self.text += data
 
     def handle_endtag(self, tag):
-
         if tag == "a":
             self.anchors.append((self.href, self.text, self.table_row))
-            self.href = ""
         elif tag == "td":
             self.table_row.append(self.text)
+            self.text = ""
 
-        # Discard any non-matching end tags.
-        while self.tags:
-            if self.tags.pop() == tag:
-                break
+
+
+
+class HTMLToText(html.parser.HTMLParser):
+
+    def __init__(self):
+
+        html.parser.HTMLParser.__init__(self)
+        self.active = False
+        self.text = ""
+
+    def feed(self, data):
+
+        self.anchors = []
+        try:
+            data = data.decode()
+        except (UnicodeDecodeError, AttributeError):
+            pass
+        html.parser.HTMLParser.feed(self, data)
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "body":
+            self.active = True
+            self.text = ""
+
+    def handle_data(self, data):
+        self.text += " " + data.strip()
+
+    def handle_endtag(self, tag):
+        if tag in ["h1", "h2", "h3", "div", "p", "br"]:
+            self.text += "\n"
+
+        if tag == "body":
+            self.active = False
 
 
 class Fetcher:
@@ -182,7 +213,7 @@ class AnchorageFetcher(Fetcher):
 
         "Reads the messages available from the URL for the current VAA centre."
 
-        html = urrlib3.urlopen(self.url).read()
+        html = urllib.request.urlopen(self.url).read()
         p = Parser()
         p.feed(html)
         p.close()
@@ -228,8 +259,12 @@ class LondonFetcher(Fetcher):
 
         req = urllib.request.Request(self.url, headers={'User-Agent' : "Magic Browser"})
         print("Open ", self.url)
-        # FIXME: VAAC uses utf-8 at the moment. If this changes this needs to be updated
-        html = urllib.request.urlopen(req).read().decode('utf-8')
+        html = urllib.request.urlopen(req).read()
+        try:
+            html = html.decode()
+        except (UnicodeDecodeError, AttributeError):
+            pass
+
         p = Parser()
         p.feed(html)
         p.close()
@@ -240,7 +275,7 @@ class LondonFetcher(Fetcher):
 
         for href, text, table_text in p.anchors:
 
-            if text == "VAA" and href.endswith(".html"):
+            if text == "Advisory" and href != "":
 
                 # The date is encoded in the associated table text.
                 # Unfortunately, it is localised, so we use the date from the
@@ -258,7 +293,7 @@ class LondonFetcher(Fetcher):
                 item.url = message_url
                 item.content = text
                 item.setCheckState(checked_dict[False])
-                item.vag = self.get_vag_url(p,table_text)
+                item.vag = self.get_vag_url(p, table_text)
                 if self.hasExistingFile(output_dir, item.filename):
                     item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
                 vaaList.addItem(item)
@@ -270,33 +305,40 @@ class LondonFetcher(Fetcher):
     def read_message(self, url):
 
         req = urllib.request.Request(url, headers={'User-Agent' : "Magic Browser"})
-        # FIXME: VAAC uses utf-8 at the moment - need to update if that changes
         html = urllib.request.urlopen(req).read().decode('utf-8')
+        try:
+            html = html.decode()
+        except (UnicodeDecodeError, AttributeError):
+            pass
+
+        p = HTMLToText()
+        p.feed(html)
+        p.close()
 
         # The London VAAC currently shows advisories in HTML pages.
         # We just extract what we can find.
-        at = html.find("VA ADVISORY")
-        if at == -1:
-            return
-
-        start = html.rfind("<p>", 0, at)
-        if start == -1:
-            return
-
-        start = html.find("<br>", start)
-        lines = html[start:].split("\n")
 
         text = ""
         date = datetime.datetime.now()
         volcano = "Unknown"
 
-        for line in lines:
+        active = False
+
+        for line in p.text.split("\n"):
 
             line = line.strip()
-            if not line or line == "<br>":
+            if not line:
+                continue
+
+            active = (active or line.startswith("VA ADVISORY") or line.startswith("VA EXTENDED ADVISORY"))
+            if not active:
                 continue
 
             text += line + "\n"
+
+            if (line.startswith("NXT ADVISORY")):
+                break
+
             if line.startswith("DTG:"):
                 # The date is encoded in the advisory.
                 date_text = line[4:].lstrip()
@@ -306,9 +348,6 @@ class LondonFetcher(Fetcher):
                 # The volcano is encoded in the advisory.
                 volcano = line[8:].lstrip()
 
-            if line == "=":
-                break
-
         return volcano, date, text
 
 
@@ -316,7 +355,7 @@ class LondonFetcher(Fetcher):
 
           for href, text, table_text in parser.anchors:
                 if table_text==table_text_to_find:
-                    if text == "VAG" and href.endswith(".png"):
+                    if text == "Graphic" and href != "":
                         vag_url = urllib.parse.urljoin(self.url, href)
                         return vag_url
 
@@ -358,7 +397,13 @@ class TestFetcher(Fetcher):
 
         "Reads the messages available from the URL for the current VAA centre."
 
-        text = urrlib3.urlopen(self.url).read()
+        text = urllib.request.urlopen(self.url).read()
+
+        try:
+            text = text.decode()
+        except (UnicodeDecodeError, AttributeError):
+            pass
+
 
         date = datetime.datetime.now()
         volcano = "Unknown"
@@ -615,8 +660,8 @@ class Window(QtWidgets.QMainWindow):
             QtWidgets.QApplication.restoreOverrideCursor()
 
             if self.vaaList.count() == 0:
-                QtWidgets.QMessageBox.information(self, self.tr("Fetching from %1").arg(name),
-                    self.tr("No new messages available from %1.").arg(name))
+                QtWidgets.QMessageBox.information(self, self.tr("Fetching from %s" % name),
+                    self.tr("No new messages available from %s." % name))
 
     def updateButtons(self):
 
@@ -678,7 +723,7 @@ class Window(QtWidgets.QMainWindow):
 
 
             if not item.content:
-                vaa_content = item.content = urrlib.urlopen(url).read()
+                vaa_content = item.content = urllib.request.urlopen(url).read()
             else:
                 vaa_content = item.content
 
@@ -694,33 +739,23 @@ class Window(QtWidgets.QMainWindow):
 
             # Convert the message in the HTML file to a KML file.
             try:
-                #FIXME: path here
-                #sconvert = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
-                sconvert = subprocess.Popen(["/home/andreb/projects/vaa-kml/metno-vaa-kml", vaa_file],
-                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            except FileNotFoundError as e:
+                output = subprocess.check_call(["/usr/bin/metno-vaa-kml", vaa_file],
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                        timeout=20)
+            except (FileNotFoundError, subprocess.TimeoutExpired) as e:
                 failed_files.append(vaa_file)
                 item.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxWarning))
                 message += " conversion failed %s." % str(e)
                 isOK = False
-                return
 
 
 
-            output = sconvert.stdout.read()
-
-
-            if sconvert.wait() != 0:
-                failed_files.append(vaa_file)
-                item.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxWarning))
-                message += " conversion failed %s." % output
-                isOK = False
-            else:
+            if isOK:
                 # Remove the HTML file.
                 os.remove(vaa_file)
                 kml_files.append(kml_file)
                 item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
-                message += " converted. File available in " + kml_file +" % s " % output
+                message += " converted. File available in " + kml_file + " % s " % output
                 hasConverted = True
                 isOK = True
 
@@ -757,12 +792,12 @@ class Window(QtWidgets.QMainWindow):
         item = self.vaaList.item(row)
 
         if not item.content:
-            item.content = urrlib.request.urlopen(item.url).read()
+            item.content = urllib.request.urlopen(item.url).read()
 
         oldContent = item.content
 
         editDialog = EditDialog(item.content[:], self)
-        editDialog.restoreGeometry(self.settings.value("editdialog/geometry").toByteArray())
+        editDialog.restoreGeometry(self.settings.value("editdialog/geometry"))
 
         if editDialog.exec_() == QtWidgets.QDialog.Accepted:
             item.content = unicode(editDialog.textEdit.toPlainText())
