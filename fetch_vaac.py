@@ -156,46 +156,43 @@ class MainDialog(QtWidgets.QDialog, selectVaac.Ui_Dialog):
 
         kml_file = os.path.join(self.output_dir, kml_file)
         message = item.text()
-        if os.path.exists(kml_file):
-            message += " already exists in " + kml_file
+
+        if not item.content:
+            vaa_content = item.content = urllib3.urlopen(url).read()
         else:
+            vaa_content = item.content
 
-            if not item.content:
-                vaa_content = item.content = urllib3.urlopen(url).read()
-            else:
-                vaa_content = item.content
+        # Wrap any non-HTML content in a <pre> element.
+        if not vaa_file.endswith(".html"):
+            vaa_content = "<pre>\n" + vaa_content + "\n</pre>\n"
+            vaa_file += ".html"
 
-            # Wrap any non-HTML content in a <pre> element.
-            if not vaa_file.endswith(".html"):
-                vaa_content = "<pre>\n" + vaa_content + "\n</pre>\n"
-                vaa_file += ".html"
+        open(vaa_file, "w").write(vaa_content)
 
-            open(vaa_file, "w").write(vaa_content)
+        QtWidgets.QApplication.processEvents()
 
-            QtWidgets.QApplication.processEvents()
+        # Convert the message in the HTML file to a KML file.
+        sconvert = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT)
 
-            # Convert the message in the HTML file to a KML file.
-            sconvert = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.STDOUT)
+        message = item.text()
 
-            message = item.text()
-
-            if sconvert.wait() != 0:
-                failed_files.append(vaa_file)
-                assert isinstance(QtGui.QApplication.style().
-                                  standardIconobject, )
-                item.setIcon(QtGui.QApplication.style().
-                             standardIcon(QtGui.QStyle.SP_MessageBoxWarning))
-                message += " conversion failed."
-            else:
-                # Remove the HTML file.
-                os.remove(vaa_file)
-                kml_files.append(kml_file)
-                item.setText(item.text() + " " +
-                             QtWidgets.QApplication.translate("Fetcher",
+        if sconvert.wait() != 0:
+            failed_files.append(vaa_file)
+            assert isinstance(QtGui.QApplication.style().
+                              standardIconobject, )
+            item.setIcon(QtGui.QApplication.style().
+                         standardIcon(QtGui.QStyle.SP_MessageBoxWarning))
+            message += " conversion failed."
+        else:
+            # Remove the HTML file.
+            os.remove(vaa_file)
+            kml_files.append(kml_file)
+            item.setText(item.text() + " " +
+                         QtWidgets.QApplication.translate("Fetcher",
                                                           "(converted)"))
-                message += " converted. File available in " + kml_file
+            message += " converted. File available in " + kml_file
 
         print(kml_file)
 

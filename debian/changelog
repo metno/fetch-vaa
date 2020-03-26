@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.9.12-2) RELEASED; urgency=medium
+
+  * new version
+
+ -- Helen Korsmo <helenk@pc4365.pc.met.no>  Thu, 26 Mar 2020 14:58:13 +0100
+
 metno-fetch-vaa (0.9.12-1) RELEASED; urgency=medium
 
    * python3 and pyqt5
