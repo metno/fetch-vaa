@@ -21,16 +21,18 @@ Download the contents of a VAAC message
 and convert it to a kml-file.
 """""
 
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore
+import PyQt5.QtWidgets as QtWidgets
+
 import sys
 import os
-import urllib2
+import urllib3
 import subprocess
 import selectVaac
 import metno_fetch_vaa
 
 
-class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
+class MainDialog(QtWidgets.QDialog, selectVaac.Ui_Dialog):
     """" gui for selecting a VAAC message to download """
     def __init__(self, fetchers, output_dir, parent=None):
         super(MainDialog, self).__init__(parent)
@@ -38,17 +40,16 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
         self.fetchers = fetchers
         self.output_dir = output_dir
         names = self.fetchers.keys()
-        names.sort()
-        vaacs = QtCore.QStringList(names)
-        vaacs.insert(0, "Select VAAC")
-        self.comboBox.insertItems(1, vaacs)
-        self.comboBox.currentIndexChanged[QtCore.QString]. \
-            connect(self.update_list)
+        #names.sort()
+        self.vaacs = list(names)
+        self.vaacs.insert(0, "Select VAAC")
+        self.comboBox.insertItems(1, self.vaacs)
+        self.comboBox.currentIndexChanged.connect(self.update_list)
         self.vaaList.currentItemChanged.connect(self.vaa_listitem_changed)
         self.pushButton.clicked.connect(self.show_vaac_message)
         self.vaaList.doubleClicked.connect(self.show_vaac_message)
 
-        self.show_vaac = QtGui.QTextBrowser()
+        self.show_vaac = QtWidgets.QTextBrowser()
 
         self.show_vaac.setGeometry(10, 10, 460, 380)
 
@@ -56,16 +57,16 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
         """ update the list of VAAC messages,
             when a new VAAC centre has been selected
         """
-        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        self.vaaList.clear()
-        self.fetchers[str(vaac)].fetch(self.vaaList, self.output_dir)
 
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        self.vaaList.clear()
+        self.fetchers[self.vaacs[vaac]].fetch(self.vaaList, self.output_dir)
         for i in range(self.vaaList.count()):
             item = self.vaaList.item(i)
             item.setData(QtCore.Qt.CheckStateRole, QtCore.QVariant())
             item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
 
-        QtGui.QApplication.restoreOverrideCursor()
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def accept(self):
         """
@@ -76,6 +77,8 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
         self.print_vaac_message()
         super(MainDialog, self).accept()
 
+
+        
     def reject(self):
         """
             when Cancel is clicked, do not convert the advisory,
@@ -96,11 +99,13 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
             item = self.vaaList.item(row)
 
             if not item.content:
-                item.content = urllib2.urlopen(item.url).read()
-            print item.text
-            print item.content
+                item.content = urllib3.urlopen(item.url).read()
+
+            print(item.text)
+            print(item.content)
+            
             geom = self.show_vaac.geometry()
-            print "geom:", geom.x(), geom.y(), geom.width(), geom.height()
+            print("geom:", geom.x(), geom.y(), geom.width(), geom.height())
             self.show_vaac.close()
 
     def vaa_listitem_changed(self):
@@ -129,7 +134,7 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
         """
             convert the selected advisory
         """
-        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
 
         kml_files = []
         failed_files = []
@@ -156,7 +161,7 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
         else:
 
             if not item.content:
-                vaa_content = item.content = urllib2.urlopen(url).read()
+                vaa_content = item.content = urllib3.urlopen(url).read()
             else:
                 vaa_content = item.content
 
@@ -167,7 +172,7 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
 
             open(vaa_file, "w").write(vaa_content)
 
-            QtGui.QApplication.processEvents()
+            QtWidgets.QApplication.processEvents()
 
             # Convert the message in the HTML file to a KML file.
             sconvert = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
@@ -188,14 +193,14 @@ class MainDialog(QtGui.QDialog, selectVaac.Ui_Dialog):
                 os.remove(vaa_file)
                 kml_files.append(kml_file)
                 item.setText(item.text() + " " +
-                             QtGui.QApplication.translate("Fetcher",
+                             QtWidgets.QApplication.translate("Fetcher",
                                                           "(converted)"))
                 message += " converted. File available in " + kml_file
 
-        print kml_file
+        print(kml_file)
 
-        QtGui.QApplication.restoreOverrideCursor()
-        QtGui.QMessageBox.information(self, "VAAC conversion", message)
+        QtWidgets.QApplication.restoreOverrideCursor()
+        QtWidgets.QMessageBox.information(self, "VAAC conversion", message)
 
 
 
@@ -221,7 +226,7 @@ if __name__ == "__main__":
                      u"Toulouse VAAC": metno_fetch_vaa.ToulouseFetcher(),
                      u"Test VAAC": metno_fetch_vaa.TestFetcher()}
 
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     form = MainDialog(vaac_fetchers, vaac_output_dir)
     form.setWindowFlags(form.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
     form.show()

@@ -2,64 +2,59 @@
 
 # Form implementation generated from reading ui file 'selectVaac.ui'
 #
-# Created: Fri May  8 12:39:55 2015
-#      by: PyQt4 UI code generator 4.9.1
+# Created by: PyQt5 UI code generator 5.10.1
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt4 import QtCore, QtGui
-
-try:
-    _fromUtf8 = QtCore.QString.fromUtf8
-except AttributeError:
-    _fromUtf8 = lambda s: s
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
-        Dialog.setObjectName(_fromUtf8("Dialog"))
+        Dialog.setObjectName("Dialog")
         Dialog.resize(446, 489)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(_fromUtf8("metno-fetch-vaa.png")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("metno-fetch-vaa.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         Dialog.setWindowIcon(icon)
-        self.verticalLayout = QtGui.QVBoxLayout(Dialog)
-        self.verticalLayout.setObjectName(_fromUtf8("verticalLayout"))
-        self.label = QtGui.QLabel(Dialog)
+        self.verticalLayout = QtWidgets.QVBoxLayout(Dialog)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.label = QtWidgets.QLabel(Dialog)
         font = QtGui.QFont()
-        font.setFamily(_fromUtf8("Arial"))
+        font.setFamily("Arial")
         font.setPointSize(16)
         self.label.setFont(font)
-        self.label.setObjectName(_fromUtf8("label"))
+        self.label.setObjectName("label")
         self.verticalLayout.addWidget(self.label)
-        self.comboBox = QtGui.QComboBox(Dialog)
-        self.comboBox.setObjectName(_fromUtf8("comboBox"))
+        self.comboBox = QtWidgets.QComboBox(Dialog)
+        self.comboBox.setObjectName("comboBox")
         self.verticalLayout.addWidget(self.comboBox)
-        self.vaaList = QtGui.QListWidget(Dialog)
-        self.vaaList.setObjectName(_fromUtf8("vaaList"))
+        self.vaaList = QtWidgets.QListWidget(Dialog)
+        self.vaaList.setObjectName("vaaList")
         self.verticalLayout.addWidget(self.vaaList)
-        self.pushButton = QtGui.QPushButton(Dialog)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Fixed)
+        self.pushButton = QtWidgets.QPushButton(Dialog)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.pushButton.sizePolicy().hasHeightForWidth())
         self.pushButton.setSizePolicy(sizePolicy)
-        self.pushButton.setObjectName(_fromUtf8("pushButton"))
+        self.pushButton.setObjectName("pushButton")
         self.verticalLayout.addWidget(self.pushButton)
-        self.buttonBox = QtGui.QDialogButtonBox(Dialog)
+        self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QtGui.QDialogButtonBox.Cancel|QtGui.QDialogButtonBox.Ok)
-        self.buttonBox.setObjectName(_fromUtf8("buttonBox"))
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.setObjectName("buttonBox")
         self.verticalLayout.addWidget(self.buttonBox)
 
         self.retranslateUi(Dialog)
-        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL(_fromUtf8("accepted()")), Dialog.accept)
-        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL(_fromUtf8("rejected()")), Dialog.reject)
-        QtCore.QObject.connect(self.comboBox, QtCore.SIGNAL(_fromUtf8("currentIndexChanged(QString)")), Dialog.setWindowTitle)
+        self.buttonBox.accepted.connect(Dialog.accept)
+        self.buttonBox.rejected.connect(Dialog.reject)
+        self.comboBox.currentIndexChanged['QString'].connect(Dialog.setWindowTitle)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
-        Dialog.setWindowTitle(QtGui.QApplication.translate("Dialog", "Fetch Volcanic Ash Advisories", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("Dialog", "Fetch Volcanic Ash Advisories", None, QtGui.QApplication.UnicodeUTF8))
-        self.pushButton.setToolTip(QtGui.QApplication.translate("Dialog", "Preview VAAC message before fetching", None, QtGui.QApplication.UnicodeUTF8))
-        self.pushButton.setText(QtGui.QApplication.translate("Dialog", "Show VAAC message", None, QtGui.QApplication.UnicodeUTF8))
-        self.buttonBox.setToolTip(QtGui.QApplication.translate("Dialog", "Preview VAAC message before fetching", None, QtGui.QApplication.UnicodeUTF8))
+        _translate = QtCore.QCoreApplication.translate
+        Dialog.setWindowTitle(_translate("Dialog", "Fetch Volcanic Ash Advisories"))
+        self.label.setText(_translate("Dialog", "Fetch Volcanic Ash Advisories"))
+        self.pushButton.setToolTip(_translate("Dialog", "Preview VAAC message before fetching"))
+        self.pushButton.setText(_translate("Dialog", "Show VAAC message"))
+        self.buttonBox.setToolTip(_translate("Dialog", "Preview VAAC message before fetching"))
 
