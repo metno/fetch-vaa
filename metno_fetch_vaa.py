@@ -53,7 +53,7 @@ class Parser(html.parser.HTMLParser):
 
         html.parser.HTMLParser.__init__(self)
         self.href = ""
-        self.text = ""
+        self.text = []
         self.table_row = []
         self.anchors = []
 
@@ -74,8 +74,51 @@ class Parser(html.parser.HTMLParser):
                 self.href = d["href"]
             except KeyError:
                 pass
-        elif tag == "tr":
+        elif tag == "tr" or tag == "li":
             self.table_row = []
+
+
+
+    def handle_data(self, data):
+        self.text += [data.strip()]
+
+
+    def handle_endtag(self, tag):
+        if tag == "a":
+            self.anchors.append((self.href, self.text, self.table_row))
+        elif tag == "td" or tag == "li":
+            self.table_row.append(self.text)
+            self.text = []
+
+
+
+class ListParser(html.parser.HTMLParser):
+
+    def __init__(self):
+
+        html.parser.HTMLParser.__init__(self)
+        self.href = ""
+        self.text = ""
+        self.anchors = []
+
+    def feed(self, data):
+
+        self.anchors = []
+        try:
+            data = data.decode()
+        except (UnicodeDecodeError, AttributeError):
+            pass
+        html.parser.HTMLParser.feed(self, data)
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            d = dict(attrs)
+            self.href = ""
+            self.text = ""
+            try:
+                self.href = d["href"]
+            except KeyError:
+                pass
 
 
 
@@ -85,11 +128,7 @@ class Parser(html.parser.HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == "a":
-            self.anchors.append((self.href, self.text, self.table_row))
-        elif tag == "td":
-            self.table_row.append(self.text)
-            self.text = ""
-
+            self.anchors.append((self.href, self.text))
 
 
 
@@ -148,7 +187,7 @@ class Fetcher:
 
 class ToulouseFetcher(Fetcher):
 
-    url = "http://www.meteo.fr/vaac/evaa.html"
+    url = "http://vaac.meteo.fr/advisory/"
     number_to_fetch = 10
     returns_html = True
 
@@ -157,45 +196,49 @@ class ToulouseFetcher(Fetcher):
         "Reads the messages available from the URL for the current VAA centre."
 
         html = urllib.request.urlopen(self.url).read()
-        p = Parser()
+        p = ListParser()
         p.feed(html)
         p.close()
 
         count = 0
 
-        for href, text, table_text in p.anchors:
+        for href, text in p.anchors:
+            match = re.search(r"(.*) - (\d\d\d\d-\d\d-\d\d \d\d:\d\d) utc", text)
+            if match:
+                volcano = match.group(1)
+                date = match.group(2)
+            else:
+                continue
 
-            if text.endswith("UTC"):
+            print(volcano, date)
 
-                # The date is encoded in the URL for the advisory.
-                info = href.split(".")
-                date = datetime.datetime.strptime(info[-2], "%Y%m%d%H%M").strftime("%Y-%m-%d %H:%M")
-                volcano = info[2].replace("_", " ")
-                item = QtWidgets.QListWidgetItem("%s (%s)" % (date, volcano))
-                item.setFlags(self.defaultFlags)
-                # The name to use for the locally stored file needs to be
-                # in a suitable format so that Diana can read it as part of
-                # a collection.
-                item.filename = "toulouse." + info[-2] + ".html"
-                item.url = urllib.parse.urljoin(self.url, href)
-                item.vag = self.get_vag_url(p,info)
-                item.content = None
-                item.setCheckState(checked_dict[False])
-                if self.hasExistingFile(output_dir, item.filename):
-                    item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
-                vaaList.addItem(item)
+            # The date is encoded in the URL for the advisory.
+            info = href.split("/")
+            item = QtWidgets.QListWidgetItem("%s (%s)" % (date, volcano))
+            item.setFlags(self.defaultFlags)
+            # The name to use for the locally stored file needs to be
+            # in a suitable format so that Diana can read it as part of
+            # a collection.
+            item.filename = "toulouse." + info[-2] + ".html"
+            item.url = urllib.parse.urljoin(self.url, href)
+            item.vag = self.get_vag_url(p,info)
+            item.content = None
+            item.setCheckState(checked_dict[False])
+            if self.hasExistingFile(output_dir, item.filename):
+                item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
+            vaaList.addItem(item)
 
-                count += 1
-                if count == self.number_to_fetch:
-                    break
+            count += 1
+            if count == self.number_to_fetch:
+                break
 
     def get_vag_url(self,parser,info):
 
             datestring = ".".join(info[-3:-2])
             volcano = info[2].replace("_", " ")
-            for href, text, table_text in parser.anchors:
+            for href, text in parser.anchors:
                 if volcano in href and datestring in href and href.endswith("png"):
-                    if "(VAG)" in text:
+                    if "(VAG)" in "".join(text):
                        vag_url = urllib.parse.urljoin(self.url, href)
                        return vag_url
             return None
@@ -221,7 +264,7 @@ class AnchorageFetcher(Fetcher):
         count = 0
 
         for href, text, table_text in p.anchors:
-
+            text = "".join(text)
             if text == "X" and href.split("/")[-2] == "VAA":
 
                 # The date is encoded in the associated table text.
@@ -274,7 +317,7 @@ class LondonFetcher(Fetcher):
         urls = set()
 
         for href, text, table_text in p.anchors:
-
+            text = "".join(text)
             if text == "Advisory" and href != "":
 
                 # The date is encoded in the associated table text.
@@ -723,9 +766,12 @@ class Window(QtWidgets.QMainWindow):
 
 
             if not item.content:
-                vaa_content = item.content = urllib.request.urlopen(url).read()
-            else:
-                vaa_content = item.content
+                item.content = urllib.request.urlopen(url).read()
+                try:
+                    item.content = item.content.decode()
+                except (UnicodeDecodeError, AttributeError):
+                    pass
+            vaa_content = item.content
 
             # Wrap any non-HTML content in a <pre> element.
             if vaa_content.lstrip()[:1] != "<":
