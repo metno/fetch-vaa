@@ -220,8 +220,8 @@ class ToulouseFetcher(Fetcher):
             # in a suitable format so that Diana can read it as part of
             # a collection.
             item.filename = "toulouse." + info[-2] + ".html"
-            item.url = urllib.parse.urljoin(self.url, href)
-            item.vag = self.get_vag_url(p,info)
+            item.url = "/".join(info[:-2]) + "/" + info[-2] + "_vag.csv"
+            item.vag = "/".join(info[:-2]) + "/" + info[-2] + "_vag.png"
             item.content = None
             item.setCheckState(checked_dict[False])
             if self.hasExistingFile(output_dir, item.filename):
@@ -232,16 +232,6 @@ class ToulouseFetcher(Fetcher):
             if count == self.number_to_fetch:
                 break
 
-    def get_vag_url(self,parser,info):
-
-            datestring = ".".join(info[-3:-2])
-            volcano = info[2].replace("_", " ")
-            for href, text in parser.anchors:
-                if volcano in href and datestring in href and href.endswith("png"):
-                    if "(VAG)" in "".join(text):
-                       vag_url = urllib.parse.urljoin(self.url, href)
-                       return vag_url
-            return None
 
 
 
