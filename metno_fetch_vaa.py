@@ -132,6 +132,54 @@ class ListParser(html.parser.HTMLParser):
 
 
 
+class TableParser(html.parser.HTMLParser):
+
+    def __init__(self):
+        html.parser.HTMLParser.__init__(self)
+        self.href = ""
+        self.text = ""
+        self.row = []
+        self.rows = []
+
+    def feed(self, data):
+        self.rows = []
+        try:
+            data = data.decode()
+        except (UnicodeDecodeError, AttributeError):
+            pass
+        html.parser.HTMLParser.feed(self, data)
+
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "table":
+            self.href = ""
+            self.text = ""
+            self.row = []
+            self.rows = []
+        if tag == "a":
+            d = dict(attrs)
+            try:
+                self.href = d["href"]
+            except KeyError:
+                pass
+
+
+    def handle_data(self, data):
+        self.text += data.strip()
+
+
+    def handle_endtag(self, tag):
+        if tag == "td" or tag == "th":
+            self.row += [{'text': self.text, 'href': self.href}]
+            self.href = ""
+            self.text = ""
+        if tag == "tr":
+            if (len(self.row) > 0):
+                self.rows.append((self.row))
+            self.row = []
+
+
+
 class HTMLToText(html.parser.HTMLParser):
 
     def __init__(self):
@@ -298,7 +346,7 @@ class LondonFetcher(Fetcher):
         except (UnicodeDecodeError, AttributeError):
             pass
 
-        p = Parser()
+        p = TableParser()
         p.feed(html)
         p.close()
 
@@ -306,34 +354,30 @@ class LondonFetcher(Fetcher):
         # Some message appear more than once in the table, so filter out duplicates.
         urls = set()
 
-        for href, text, table_text in p.anchors:
-            text = "".join(text)
-            if text == "Advisory" and href != "":
+        for row in p.rows:
+            volcano = row[0]['text']
+            try:
+                date = datetime.datetime.strptime(row[1]['text'], "%H:%M on %d %b %Y")
+            except:
+                continue
+            advisory_url = urllib.parse.urljoin(self.url, row[2]['href'])
+            graphic_url = urllib.parse.urljoin(self.url, row[3]['href'])
 
-                # The date is encoded in the associated table text.
-                # Unfortunately, it is localised, so we use the date from the
-                # message itself.
-                message_url = urllib.parse.urljoin(self.url, href)
-                if message_url in urls:
-                    continue
+            item = QtWidgets.QListWidgetItem("%s (%s)" % (date, volcano))
+            item.setFlags(self.defaultFlags)
+            item.filename = "london." + date.strftime("%Y%m%d%H%M")
+            item.url = advisory_url
+            item.content = self.read_message(advisory_url)
+            item.setCheckState(checked_dict[False])
+            item.vag = graphic_url
+            if self.hasExistingFile(output_dir, item.filename):
+                item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
+            vaaList.addItem(item)
 
-                urls.add(message_url)
+            count += 1
+            if count == self.number_to_fetch:
+                break
 
-                volcano, date, text = self.read_message(message_url)
-                item = QtWidgets.QListWidgetItem("%s (%s)" % (date, volcano))
-                item.setFlags(self.defaultFlags)
-                item.filename = "london." + date.strftime("%Y%m%d%H%M")
-                item.url = message_url
-                item.content = text
-                item.setCheckState(checked_dict[False])
-                item.vag = self.get_vag_url(p, table_text)
-                if self.hasExistingFile(output_dir, item.filename):
-                    item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
-                vaaList.addItem(item)
-
-                count += 1
-                if count == self.number_to_fetch:
-                    break
 
     def read_message(self, url):
 
@@ -372,27 +416,9 @@ class LondonFetcher(Fetcher):
             if (line.startswith("NXT ADVISORY")):
                 break
 
-            if line.startswith("DTG:"):
-                # The date is encoded in the advisory.
-                date_text = line[4:].lstrip()
-                date = datetime.datetime.strptime(date_text, "%Y%m%d/%H%MZ")
-
-            if line.startswith("VOLCANO:"):
-                # The volcano is encoded in the advisory.
-                volcano = line[8:].lstrip()
-
-        return volcano, date, text
+        return text
 
 
-    def get_vag_url(self,parser,table_text_to_find):
-
-          for href, text, table_text in parser.anchors:
-                if table_text==table_text_to_find:
-                    if text == "Graphic" and href != "":
-                        vag_url = urllib.parse.urljoin(self.url, href)
-                        return vag_url
-
-          return None
 
 class LocalFileFetcher(Fetcher):
 
