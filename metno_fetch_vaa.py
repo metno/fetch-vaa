@@ -24,7 +24,7 @@ import PyQt5.QtWidgets as QtWidgets
 import webbrowser
 import re
 
-__version__ = "0.9.12"
+__version__ = "0.9.13"
 
 checked_dict = {False: QtCore.Qt.Unchecked, True: QtCore.Qt.Checked}
 

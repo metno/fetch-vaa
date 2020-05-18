@@ -1,3 +1,9 @@
+metno-fetch-vaa (0.9.13-1) RELEASED; urgency=medium
+
+  * works for Toulouse VAAC
+
+ -- Helen Korsmo <helenk@pc4365.pc.met.no>  Mon, 18 May 2020 16:52:12 +0200
+
 metno-fetch-vaa (0.9.12-2) RELEASED; urgency=medium
 
   * new version
