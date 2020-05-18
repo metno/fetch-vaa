@@ -53,7 +53,7 @@ class Parser(html.parser.HTMLParser):
 
         html.parser.HTMLParser.__init__(self)
         self.href = ""
-        self.text = ""
+        self.text = []
         self.table_row = []
         self.anchors = []
 
@@ -74,35 +74,35 @@ class Parser(html.parser.HTMLParser):
                 self.href = d["href"]
             except KeyError:
                 pass
-        elif tag == "tr":
+        elif tag == "tr" or tag == "li":
             self.table_row = []
 
 
 
     def handle_data(self, data):
-        self.text += data.strip()
+        self.text += [data.strip()]
 
 
     def handle_endtag(self, tag):
         if tag == "a":
             self.anchors.append((self.href, self.text, self.table_row))
-        elif tag == "td":
+        elif tag == "td" or tag == "li":
             self.table_row.append(self.text)
-            self.text = ""
+            self.text = []
 
 
 
-
-class HTMLToText(html.parser.HTMLParser):
+class VAAParser(html.parser.HTMLParser):
+    """
+    Parses the HTML webpage with the VAA
+    """
 
     def __init__(self):
-
         html.parser.HTMLParser.__init__(self)
         self.active = False
         self.text = ""
 
     def feed(self, data):
-
         self.anchors = []
         try:
             data = data.decode()
@@ -111,23 +111,37 @@ class HTMLToText(html.parser.HTMLParser):
         html.parser.HTMLParser.feed(self, data)
 
     def handle_starttag(self, tag, attrs):
-        if tag == "body":
-            self.active = True
-            self.text = ""
+        pass
 
     def handle_data(self, data):
-        self.text += " " + data.strip()
+        data = data.strip()
+        if (len(data) > 0):
+            if (self.active):
+                self.text += data + " "
+            else:
+                m = re.search("VA (EXTENDED )?ADVISORY", data)
+                if (m):
+                    self.active = True
+                    self.text = data[m.start():]
 
     def handle_endtag(self, tag):
-        if tag in ["h1", "h2", "h3", "div", "p", "br"]:
-            self.text += "\n"
+        if (self.active):
+            if tag in ["h1", "h2", "h3", "div", "p", "br", "code"]:
+                self.text = self.text.rstrip() + "\n"
 
-        if tag == "body":
-            self.active = False
+            #Final statement in VAA message
+            m = re.search("NXT ADVISORY:\s*\w+.*?\n", self.text)
+            if (m):
+                self.text = self.text[:m.end()]
+                self.active = False
+
+
+
+
+
 
 
 class Fetcher:
-
     showBusy = True
     showInMenu = True
     defaultFlags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsSelectable
@@ -146,9 +160,67 @@ class Fetcher:
         return os.path.exists(os.path.join(output_dir, kml_file))
 
 
-class ToulouseFetcher(Fetcher):
 
-    url = "http://www.meteo.fr/vaac/evaa.html"
+
+
+class ToulouseFetcher(Fetcher):
+    """
+    Fetches data from Toulouse VAAC
+    """
+
+    class ListParser(html.parser.HTMLParser):
+        """
+        Parses the Toulouse VAAC webpage with HTML like
+        <ul>
+        <li><a href="link">VOLCANO - date</a>
+        """
+
+        def __init__(self):
+            html.parser.HTMLParser.__init__(self)
+            self.active = False
+            self.href = ""
+            self.text = ""
+            self.anchors = []
+
+        def feed(self, data):
+            try:
+                data = data.decode()
+            except (UnicodeDecodeError, AttributeError):
+                pass
+            html.parser.HTMLParser.feed(self, data)
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "ul":
+                self.active = True
+
+            if (self.active):
+                if tag == "a":
+                    d = dict(attrs)
+                    try:
+                        self.href = d["href"]
+                    except KeyError:
+                        pass
+
+        def handle_data(self, data):
+            if (self.active):
+                self.text += data.strip()
+
+        def handle_endtag(self, tag):
+            if tag == "ul":
+                self.active = False
+
+            if (self.active):
+                if tag == "li":
+                    match = re.search(r"(.*) - (\d\d\d\d-\d\d-\d\d \d\d:\d\d) utc", self.text)
+                    if match:
+                        volcano = match.group(1)
+                        date = match.group(2)
+                        self.anchors.append((self.href, volcano, date))
+                    self.href = ""
+                    self.text = ""
+
+
+    url = "http://vaac.meteo.fr/advisory/"
     number_to_fetch = 10
     returns_html = True
 
@@ -157,48 +229,52 @@ class ToulouseFetcher(Fetcher):
         "Reads the messages available from the URL for the current VAA centre."
 
         html = urllib.request.urlopen(self.url).read()
-        p = Parser()
+        p = ToulouseFetcher.ListParser()
         p.feed(html)
         p.close()
 
         count = 0
 
-        for href, text, table_text in p.anchors:
+        for href, volcano, date in p.anchors:
+            print(volcano, date)
 
-            if text.endswith("UTC"):
+            # The date is encoded in the URL for the advisory.
+            info = href.split("/")
+            item = QtWidgets.QListWidgetItem("%s (%s)" % (date, volcano))
+            item.setFlags(self.defaultFlags)
+            # The name to use for the locally stored file needs to be
+            # in a suitable format so that Diana can read it as part of
+            # a collection.
+            item.filename = "toulouse." + info[-2] + ".html"
+            item.url = href
+            item.content = self.read_message(href)
+            item.setCheckState(checked_dict[False])
+            item.vag = "/".join(info[:-2]) + "/" + info[-2] + "_vag.png"
+            if self.hasExistingFile(output_dir, item.filename):
+                item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
+            vaaList.addItem(item)
 
-                # The date is encoded in the URL for the advisory.
-                info = href.split(".")
-                date = datetime.datetime.strptime(info[-2], "%Y%m%d%H%M").strftime("%Y-%m-%d %H:%M")
-                volcano = info[2].replace("_", " ")
-                item = QtWidgets.QListWidgetItem("%s (%s)" % (date, volcano))
-                item.setFlags(self.defaultFlags)
-                # The name to use for the locally stored file needs to be
-                # in a suitable format so that Diana can read it as part of
-                # a collection.
-                item.filename = "toulouse." + info[-2] + ".html"
-                item.url = urllib.parse.urljoin(self.url, href)
-                item.vag = self.get_vag_url(p,info)
-                item.content = None
-                item.setCheckState(checked_dict[False])
-                if self.hasExistingFile(output_dir, item.filename):
-                    item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
-                vaaList.addItem(item)
+            count += 1
+            if count == self.number_to_fetch:
+                break
 
-                count += 1
-                if count == self.number_to_fetch:
-                    break
+    def read_message(self, url):
 
-    def get_vag_url(self,parser,info):
+        req = urllib.request.Request(url, headers={'User-Agent' : "Magic Browser"})
+        html = urllib.request.urlopen(req).read()
+        try:
+            html = html.decode()
+        except (UnicodeDecodeError, AttributeError):
+            pass
 
-            datestring = ".".join(info[-3:-2])
-            volcano = info[2].replace("_", " ")
-            for href, text, table_text in parser.anchors:
-                if volcano in href and datestring in href and href.endswith("png"):
-                    if "(VAG)" in text:
-                       vag_url = urllib.parse.urljoin(self.url, href)
-                       return vag_url
-            return None
+        p = VAAParser()
+        p.feed(html)
+        p.close()
+
+        print("TEXT:" + p.text)
+
+        return p.text
+
 
 
 
@@ -221,7 +297,7 @@ class AnchorageFetcher(Fetcher):
         count = 0
 
         for href, text, table_text in p.anchors:
-
+            text = "".join(text)
             if text == "X" and href.split("/")[-2] == "VAA":
 
                 # The date is encoded in the associated table text.
@@ -244,6 +320,64 @@ class AnchorageFetcher(Fetcher):
 
 
 class LondonFetcher(Fetcher):
+    """
+    Fetches VAA messages from VAAC London
+    """
+
+    class TableParser(html.parser.HTMLParser):
+        """
+        Parses the table on the VAAC London webpages, which concsists of four
+        columns: volcano, date, VAA link, VAA graphics link
+        """
+
+        def __init__(self):
+            html.parser.HTMLParser.__init__(self)
+            self.href = ""
+            self.text = ""
+            self.row = []
+            self.rows = []
+
+        def feed(self, data):
+            self.rows = []
+            try:
+                data = data.decode()
+            except (UnicodeDecodeError, AttributeError):
+                pass
+            html.parser.HTMLParser.feed(self, data)
+
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "tbody":
+                self.href = ""
+                self.text = ""
+                self.row = []
+                self.rows = []
+            if tag == "a":
+                d = dict(attrs)
+                try:
+                    self.href = d["href"]
+                except KeyError:
+                    pass
+
+
+        def handle_data(self, data):
+            self.text += data.strip()
+
+
+        def handle_endtag(self, tag):
+            if tag == "td":
+                self.row += [{'text': self.text, 'href': self.href}]
+                self.href = ""
+                self.text = ""
+            if tag == "tr":
+                if (len(self.row) > 0):
+                    self.rows.append((self.row))
+                self.row = []
+
+
+
+
+
 
     # Scrape the London VAAC page on the Met Office website.
     url = "http://www.metoffice.gov.uk/aviation/vaac/vaacuk.html"
@@ -265,7 +399,7 @@ class LondonFetcher(Fetcher):
         except (UnicodeDecodeError, AttributeError):
             pass
 
-        p = Parser()
+        p = LondonFetcher.TableParser()
         p.feed(html)
         p.close()
 
@@ -273,93 +407,47 @@ class LondonFetcher(Fetcher):
         # Some message appear more than once in the table, so filter out duplicates.
         urls = set()
 
-        for href, text, table_text in p.anchors:
+        for row in p.rows:
+            volcano = row[0]['text']
+            try:
+                date = datetime.datetime.strptime(row[1]['text'], "%H:%M on %d %b %Y")
+            except:
+                continue
+            advisory_url = urllib.parse.urljoin(self.url, row[2]['href'])
+            graphic_url = urllib.parse.urljoin(self.url, row[3]['href'])
 
-            if text == "Advisory" and href != "":
+            item = QtWidgets.QListWidgetItem("%s (%s)" % (date, volcano))
+            item.setFlags(self.defaultFlags)
+            item.filename = "london." + date.strftime("%Y%m%d%H%M")
+            item.url = advisory_url
+            item.content = self.read_message(advisory_url)
+            item.setCheckState(checked_dict[False])
+            item.vag = graphic_url
+            if self.hasExistingFile(output_dir, item.filename):
+                item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
+            vaaList.addItem(item)
 
-                # The date is encoded in the associated table text.
-                # Unfortunately, it is localised, so we use the date from the
-                # message itself.
-                message_url = urllib.parse.urljoin(self.url, href)
-                if message_url in urls:
-                    continue
+            count += 1
+            if count == self.number_to_fetch:
+                break
 
-                urls.add(message_url)
-
-                volcano, date, text = self.read_message(message_url)
-                item = QtWidgets.QListWidgetItem("%s (%s)" % (date, volcano))
-                item.setFlags(self.defaultFlags)
-                item.filename = "london." + date.strftime("%Y%m%d%H%M")
-                item.url = message_url
-                item.content = text
-                item.setCheckState(checked_dict[False])
-                item.vag = self.get_vag_url(p, table_text)
-                if self.hasExistingFile(output_dir, item.filename):
-                    item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
-                vaaList.addItem(item)
-
-                count += 1
-                if count == self.number_to_fetch:
-                    break
 
     def read_message(self, url):
 
         req = urllib.request.Request(url, headers={'User-Agent' : "Magic Browser"})
-        html = urllib.request.urlopen(req).read().decode('utf-8')
+        html = urllib.request.urlopen(req).read()
         try:
             html = html.decode()
         except (UnicodeDecodeError, AttributeError):
             pass
 
-        p = HTMLToText()
+        p = VAAParser()
         p.feed(html)
         p.close()
 
-        # The London VAAC currently shows advisories in HTML pages.
-        # We just extract what we can find.
-
-        text = ""
-        date = datetime.datetime.now()
-        volcano = "Unknown"
-
-        active = False
-
-        for line in p.text.split("\n"):
-
-            line = line.strip()
-            if not line:
-                continue
-
-            active = (active or line.startswith("VA ADVISORY") or line.startswith("VA EXTENDED ADVISORY"))
-            if not active:
-                continue
-
-            text += line + "\n"
-
-            if (line.startswith("NXT ADVISORY")):
-                break
-
-            if line.startswith("DTG:"):
-                # The date is encoded in the advisory.
-                date_text = line[4:].lstrip()
-                date = datetime.datetime.strptime(date_text, "%Y%m%d/%H%MZ")
-
-            if line.startswith("VOLCANO:"):
-                # The volcano is encoded in the advisory.
-                volcano = line[8:].lstrip()
-
-        return volcano, date, text
+        return p.text
 
 
-    def get_vag_url(self,parser,table_text_to_find):
-
-          for href, text, table_text in parser.anchors:
-                if table_text==table_text_to_find:
-                    if text == "Graphic" and href != "":
-                        vag_url = urllib.parse.urljoin(self.url, href)
-                        return vag_url
-
-          return None
 
 class LocalFileFetcher(Fetcher):
 
@@ -723,9 +811,13 @@ class Window(QtWidgets.QMainWindow):
 
 
             if not item.content:
-                vaa_content = item.content = urllib.request.urlopen(url).read()
-            else:
-                vaa_content = item.content
+                print("Reading " + url)
+                item.content = urllib.request.urlopen(url).read()
+                try:
+                    item.content = item.content.decode()
+                except (UnicodeDecodeError, AttributeError):
+                    pass
+            vaa_content = item.content
 
             # Wrap any non-HTML content in a <pre> element.
             if vaa_content.lstrip()[:1] != "<":
@@ -791,6 +883,8 @@ class Window(QtWidgets.QMainWindow):
         row = self.vaaList.currentRow()
         item = self.vaaList.item(row)
 
+        print(item.content)
+
         if not item.content:
             item.content = urllib.request.urlopen(item.url).read()
 
@@ -800,7 +894,7 @@ class Window(QtWidgets.QMainWindow):
         editDialog.restoreGeometry(self.settings.value("editdialog/geometry"))
 
         if editDialog.exec_() == QtWidgets.QDialog.Accepted:
-            item.content = unicode(editDialog.textEdit.toPlainText())
+            item.content = editDialog.textEdit.toPlainText()
             if oldContent != item.content:
                 item.setCheckState(checked_dict[False])
 
