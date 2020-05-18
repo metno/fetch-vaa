@@ -152,6 +152,7 @@ class MainDialog(QtWidgets.QDialog, selectVaac.Ui_Dialog):
         if vaa_file.endswith(".html"):
             kml_file = file_name.replace(".html", ".kml")
         else:
+            vaa_file += ".html"
             kml_file = file_name + ".kml"
 
         kml_file = os.path.join(self.output_dir, kml_file)
@@ -163,37 +164,36 @@ class MainDialog(QtWidgets.QDialog, selectVaac.Ui_Dialog):
             vaa_content = item.content
 
         # Wrap any non-HTML content in a <pre> element.
-        if not vaa_file.endswith(".html"):
-            vaa_content = "<pre>\n" + vaa_content + "\n</pre>\n"
-            vaa_file += ".html"
+        vaa_content = "<pre>\n" + vaa_content + "\n</pre>\n"
 
         open(vaa_file, "w").write(vaa_content)
 
         QtWidgets.QApplication.processEvents()
 
+        isOK = True
         # Convert the message in the HTML file to a KML file.
-        sconvert = subprocess.Popen(["/usr/bin/metno-vaa-kml", vaa_file],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT)
-
-        message = item.text()
-
-        if sconvert.wait() != 0:
+        try:
+            output = subprocess.check_call(["/usr/bin/metno-vaa-kml", vaa_file],
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    timeout=20)
+        except (FileNotFoundError, subprocess.TimeoutExpired) as e:
             failed_files.append(vaa_file)
-            assert isinstance(QtGui.QApplication.style().
-                              standardIconobject, )
-            item.setIcon(QtGui.QApplication.style().
-                         standardIcon(QtGui.QStyle.SP_MessageBoxWarning))
-            message += " conversion failed."
-        else:
+            item.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxWarning))
+            message += " conversion failed %s." % str(e)
+            isOK = False
+
+
+
+        if isOK:
             # Remove the HTML file.
             os.remove(vaa_file)
             kml_files.append(kml_file)
-            item.setText(item.text() + " " +
-                         QtWidgets.QApplication.translate("Fetcher",
-                                                          "(converted)"))
-            message += " converted. File available in " + kml_file
-
+            item.setText(item.text() + " " + QtWidgets.QApplication.translate("Fetcher", "(converted)"))
+            message += " converted. File available in " + kml_file + " % s " % output
+            hasConverted = True
+            isOK = True
+        
+        
         print(kml_file)
 
         QtWidgets.QApplication.restoreOverrideCursor()
