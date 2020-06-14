@@ -1,4 +1,5 @@
 <nocontext:>
+<timeout: 10>
 
 (?: ^ <TYPE>            $
 |   ^ <UNKNOWNCODE>     $
@@ -12,9 +13,9 @@
 |   ^ <INFOSOURCE>      $
 |   ^ <AVCOLORCODE>     $
 |   ^ <ERUPTIONDETAILS> $
-|   ^ <OBSVADTG>
+|   ^ <OBSVADTG>        $
 |   ^ <ESTVADTG>        $
-|   ^ <OBSVACLD>        $
+|   ^ <OBSVACLD>
 |   ^ <ESTVACLD>        $
 |   ^ <FCSTVACLD>       $
 |   ^ <REMARKS>         $
