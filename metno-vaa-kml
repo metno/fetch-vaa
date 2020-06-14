@@ -21,10 +21,8 @@ eval 'exec /usr/bin/perl  -S $0 ${1+"$@"}'
 
 use warnings;
 use strict;
-use LWP::Simple;
 use HTML::TreeBuilder;
 use Template;
-use Data::Dumper;
 
 our $VERSION = '0.3.6';
 
