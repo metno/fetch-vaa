@@ -1,0 +1,163 @@
+#!/usr/bin/perl
+
+# Copyright (C) 2014 MET Norway (met.no)
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+eval 'exec /usr/bin/perl  -S $0 ${1+"$@"}'
+    if 0; # not running under some shell
+
+use warnings;
+use strict;
+use LWP::Simple;
+use HTML::TreeBuilder;
+use Template;
+use Data::Dumper;
+
+our $VERSION = '0.3.6';
+
+my $SHAREDIR  = "/usr/share/metno-vaa-kml";
+
+my $GRAMMARFILE  = "volcano.grammar";
+my $TEMPLATEFILE = "volcano.tt";
+
+my $infile = shift;
+(my $outfile = $infile) =~ s/\.html$/.kml/;
+my $doc = readfile($infile);
+
+my $tree = HTML::TreeBuilder->new_from_content($doc);
+my $ash = $tree->look_down(_tag => "pre");
+
+if (not defined $ash) {
+    my $contentnode = $tree->look_down(_tag => "div", id => "colcentre")->look_down(_tag => "p");
+    my $content =  $contentnode->format();
+    $ash = HTML::Element->new('pre');
+    $ash->push_content($content);
+}
+
+my @lines = split /[\n\r]+/, $ash->as_text;
+my @content;
+
+my %ash;
+my $parser = get_parser();
+my $error = 0;
+my @fail;
+my $seencolon = 0;
+
+# Loop though lines, append any line not containing ":" to the previous
+# Push result into @content
+for (my $i=0; $i<$#lines; $i++) {
+    my $line = $lines[$i];
+    chomp $line;
+    next unless $line =~ /\S/;
+    last if $line =~ /^\s*=\s*$/;
+    $line =~ s/^\s+//;
+    $line =~ s/\s+$//;
+
+    if ($line !~ /:/) {
+	if (not $seencolon) {
+	    push @content, $line;
+	} else {
+#	    print "appending: $line (\$i = $i)\n";
+	    $content[-1] .= " " . $line;
+	}
+    } else {
+#	print $line, "\n";
+	$seencolon = 1;
+	push @content, $line;
+    }
+}
+
+# Match each line against grammar
+# Put result in %ash
+for (my $i=0; $i<$#content; $i++) {
+    my $line = $content[$i];
+    if ($line =~ $parser) {
+#	delete $/{''};
+	my ($k, $v) = %/; # only one key left
+
+	if ($k eq 'FCSTVACLD') {
+	    $ash{lc $k}{ $v->{offset} } = $v;
+	} else {
+	    $ash{lc $k} = $v;
+	}
+    } else {
+#	warn "   --- could not parse following line: ---\n";
+#	print $line, "\n";
+	$error++;
+	push @fail, $line;
+    }
+}
+
+if ($error) {
+    print "$infile\n";
+    print "  Failed to parse $error of " . scalar @content . " lines\n";
+    print "  $_\n" for @fail;
+    print "\n";
+#    print "Fail\n";
+} else {
+#    print scalar @content . " lines parsed successfully\n";
+#    print "Success\n";
+}
+
+my @fcast;
+my $forecasts = delete $ash{fcstvacld};
+for my $offset (sort {$a <=> $b} keys %$forecasts) {
+    push @fcast, $forecasts->{$offset};
+}
+$ash{forecasts} = \@fcast;
+$ash{observation} = {
+    %{ delete $ash{obsvacld} // {} },
+    %{ delete $ash{obsvadtg} // {} }
+};
+
+#print Dumper \%ash;
+
+my $tpl = Template->new({INCLUDE_PATH => $SHAREDIR});
+$tpl->process($TEMPLATEFILE, \%ash, $outfile) || die $tpl->error(), "\n";
+
+sub readfile {
+    my $file = shift;
+    my $fh;
+    open $fh, $file or return;
+    local $/ unless wantarray;
+    <$fh>;
+}
+
+sub get_parser {
+    use Regexp::Grammars;
+    my $grammar = readfile("$SHAREDIR/$GRAMMARFILE");
+#    print $grammar;
+    return qr{ $grammar }x;
+}
+
+__END__
+
+N     0
+NNE  22.5
+NE   45
+ENE  67.5
+E    90
+ESE 112.5
+SE  135
+SSE 157.5
+S   180
+SSW 202.5
+SW  225
+WSW 247.5
+W   270
+WNW 292.5
+NW  315
+NNW 337.5

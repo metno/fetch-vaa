@@ -1,0 +1,220 @@
+<nocontext:>
+
+^
+(?: <TYPE>
+|   <UNKNOWNCODE>
+|   <DTG>
+|   <VAAC>
+|   <VOLCANO>
+|   <PSN>
+|   <AREA>
+|   <SUMMITELEV>
+|   <ADVISORYNR>
+|   <INFOSOURCE>
+|   <AVCOLORCODE>
+|   <ERUPTIONDETAILS>
+|   <OBSVADTG>
+|   <ESTVADTG>
+|   <OBSVACLD>
+|   <ESTVACLD>
+|   <FCSTVACLD>
+|   <REMARKS>
+|   <NEXTADVISORY>
+)
+\.? 
+$
+
+<token: anytext> .*
+<token: anydateformat> (?: <Daytime=fulldate> | <Daytime> )
+
+<token: year>  \d\d\d\d
+<token: month> \d\d
+<token: day>   \d\d
+<token: hour>  \d\d
+<token: min>   \d\d
+
+<token: fulldate>
+    <year> <month> <day> [/ ]? <hour> <min> <tz>?
+
+<token: time>
+   <hour> <min> <tz>?
+
+<token: tz>
+   [+-]\d\d\d\d | Z
+
+<token: Daytime>
+   <day> / <time>
+   <MATCH=(?{ { day => $MATCH{day}, %{$MATCH{time}} } })>
+
+<token: flightlevel>
+   (?:
+       <MATCH=singleflightlevel>
+       | 
+       <MATCH=doubleflightlevel>
+   )
+
+<token: doubleflightlevel>
+   FL <from=level> / <to=level>
+
+<token: singleflightlevel>
+   SFC / FL <to=level>
+   (?{ $MATCH{from} = 0 })
+
+<token: level> 
+   \d\d\d
+
+<token: lat>
+   <direction=([NS])> <degree=(\d\d\d?)> <minute=([0-5]\d)>
+   <MATCH=(?{ ($MATCH{degree} + $MATCH{minute} / 60) * ($MATCH{direction} eq "S" ? -1 : 1)})>
+
+<token: lon>
+   <direction=([EW])> <degree=(\d\d\d)> <minute=([0-5]\d)>
+   <MATCH=(?{ ($MATCH{degree} + $MATCH{minute} / 60) * ($MATCH{direction} eq "W" ? -1 : 1)})>
+
+<rule: latlonpair>
+   <lat> <lon>
+#    <MATCH=(?{ [$MATCH{lat}, $MATCH{lon}] })>
+
+<rule: movement>
+    MOV <direction> <speed=(\d+)> <unit=(KT)>
+
+<token: direction>
+    (?: [NSWE]
+    |   NE  | SE  | SW  | NW
+    |   NNE | ENE | ESE | SSE
+    |   NNW | WNW | WSW | SSW
+    )
+    
+<token: separator>
+    <.ws> - <.ws>
+
+<rule: ForecastArea>
+    <flightlevel>
+    <[pos=latlonpair]>+ % <.separator>
+    <movement>?
+
+<rule: TYPE> VA ADVISORY
+
+<rule: UNKNOWNCODE>
+    FV\w\w\d\d \w{4} \d{6} (?: CCA )?
+
+<rule: DTG>
+    DTG: <MATCH=fulldate>
+
+<rule: VAAC>
+    VAAC: <MATCH=anytext>
+
+<rule: VOLCANO>
+    VOLCANO: 
+    (?:
+        <name=anytext> \s+ <id=iavcei>
+    |
+        UNKNOWN
+    )
+
+<token: iavcei>
+    \d+(\-\d+)?
+
+<rule: PSN>
+    PSN: <MATCH=latlonpair>
+
+<rule: AREA>
+    AREA: <name=anytext>
+
+<rule: SUMMITELEV>
+    SUMMIT ELEV: 
+    (?: 
+        <ele=(\d+)> (?: <units=meters> | <units=feet> )
+        (?: \( \d+ (?: <meters> | <feet> ) \) )?
+    |
+        UNKNOWN
+    )
+
+<token: meters> M
+
+<token: feet> FT
+
+<rule: ADVISORYNR>
+    ADVISORY NR: <year> / <seq=(\d+)>
+
+<rule: INFOSOURCE>
+    INFO SOURCE: <MATCH=anytext>
+
+<rule: AVCOLORCODE>
+    AVIATION COLOU?R CODE:
+    <MATCH=(RED | ORANGE | YELLOW | GREEN | UNKNOWN | NOT GIVEN | NIL | UNKNOWN)>?
+
+<rule: ERUPTIONDETAILS>
+    ERUPTION DETAILS: <MATCH=anytext>
+
+<token: REMARKS>
+    (?: REMARKS | RMK): <.ws> <MATCH=anytext>
+
+<rule: NEXTADVISORY>
+    NXT ADVISORY: 
+    (?: <anydateformat>
+    |   <text=(NO LATER THAN)> <anydateformat>
+    |   <text=(WILL BE ISSUED BY)> <anydateformat>
+    |   <text=(NO FURTHER ADVISOR(?: Y | IES))>
+    )
+
+<rule: OBSVADTG>
+    OBS VA DTG: <MATCH=anydateformat>?
+
+<rule: ESTVADTG>
+    EST VA DTG: <MATCH=anydateformat>?
+
+<rule: OBSVACLD>
+    OBS VA CLD:
+    (?:
+      <[ForecastArea]>+ % <.ws>
+    | <message=fcstmessage>
+    | <message=notobserved>
+    | <message=notdetected>
+    )?
+
+<rule: ESTVACLD>
+    EST VA CLD: 
+    (?:
+      <[ForecastArea]>+ % <.ws>
+    | <message=fcstmessage>
+    )?
+
+<rule: notavailable> NOT AVBL
+<rule: noash>        NO VA EXP <anytext>?
+<rule: notprovided>  NOT PROVIDED
+<rule: notobserved>  VA NOT OBSERVED
+<rule: notdetected>  NO VA DETECTED
+
+<rule: notidentifiable> 
+    (?: VA | ASH ) NOT IDENTIFIABLE <anytext>
+
+<rule: terminated>    <anytext> TERMINATED
+<rule: endofexercise> <anytext> END OF EXERCISE
+
+<rule: fcstmessage>
+    (?: <noash>
+    |   <notavailable>
+    |   <notprovided>
+    |   <notidentifiable>
+    |   <terminated>
+    |   <endofexercise>
+    )
+
+<rule: FCSTVACLD>
+    FCST VA CLD \+ <offset=(\d+)><.ws>?HR?: 
+    (?:
+        <Daytime> 
+        (?: 
+            (?:
+              <[ForecastArea]>+ % <.ws>
+            | <message=fcstmessage>
+            )?
+        |
+            <flightlevel>
+            <message=fcstmessage>
+        )
+    |
+        <message=fcstmessage>
+    )?
+
