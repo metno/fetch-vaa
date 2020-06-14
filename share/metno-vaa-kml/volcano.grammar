@@ -1,28 +1,26 @@
 <nocontext:>
 
-^
-(?: <TYPE>
-|   <UNKNOWNCODE>
-|   <DTG>
-|   <VAAC>
-|   <VOLCANO>
-|   <PSN>
-|   <AREA>
-|   <SUMMITELEV>
-|   <ADVISORYNR>
-|   <INFOSOURCE>
-|   <AVCOLORCODE>
-|   <ERUPTIONDETAILS>
-|   <OBSVADTG>
-|   <ESTVADTG>
-|   <OBSVACLD>
-|   <ESTVACLD>
-|   <FCSTVACLD>
-|   <REMARKS>
-|   <NEXTADVISORY>
+(?: ^ <TYPE>            $
+|   ^ <UNKNOWNCODE>     $
+|   ^ <DTG>             $
+|   ^ <VAAC>            $
+|   ^ <VOLCANO>         $
+|   ^ <PSN>             $
+|   ^ <AREA>            $
+|   ^ <SUMMITELEV>      $
+|   ^ <ADVISORYNR>      $
+|   ^ <INFOSOURCE>      $
+|   ^ <AVCOLORCODE>     $
+|   ^ <ERUPTIONDETAILS> $
+|   ^ <OBSVADTG>
+|   ^ <ESTVADTG>        $
+|   ^ <OBSVACLD>        $
+|   ^ <ESTVACLD>        $
+|   ^ <FCSTVACLD>       $
+|   ^ <REMARKS>         $
+|   ^ <NEXTADVISORY>    $
 )
-\.? 
-$
+
 
 <token: anytext> .*
 <token: anydateformat> (?: <Daytime=fulldate> | <Daytime> )
