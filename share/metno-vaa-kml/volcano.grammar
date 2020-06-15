@@ -170,7 +170,7 @@
     | <message=fcstmessage>
     | <message=notobserved>
     | <message=notdetected>
-    )?
+    )
 
 <rule: ESTVACLD>
     EST VA CLD: 
