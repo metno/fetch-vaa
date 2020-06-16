@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+[%- BLOCK folder %]
+    <Folder>
+      <name>[% name %]</name>
+[%- 
+    dtg = dtg; 
+    PROCESS timespan
+        from=current.Daytime
+        to=next.Daytime;
+    id = 0;
+    FOR area IN current.ForecastArea;
+        id = id + 1;
+        PROCESS placemark
+            fl = area.flightlevel;
+    END
+-%]
+    </Folder>
+[%- END %]
+
+[%- BLOCK timespan %]
+      <TimeSpan>
+	<begin>[% from.year || dtg.year %]-[% from.month || dtg.month %]-[% from.day %]T[% from.hour %]:[% from.min %]:00Z</begin>
+[%- IF to.exists("day") %]
+	<end>[% to.year || dtg.year %]-[% to.month || dtg.month %]-[% to.day %]T[% to.hour %]:[% to.min %]:00Z</end>
+[%- ELSE;
+    USE format;
+    twozero = format("%02d");
+    day  = from.day;
+    hour = from.hour + 6;
+    min  = from.min;
+    IF hour >= 24;
+        hour = hour - 24;
+        day  = day + 1;
+    END;
+ %]
+	<end>[% dtg.year %]-[% dtg.month %]-[% twozero(day) %]T[% twozero(hour) %]:[% min %]:00Z</end>
+[%- END %]
+      </TimeSpan>
+[%- END %]
+
+[%- BLOCK placemark %]
+      <Placemark>
+[%- IF fl.from == 0 %]
+	<name>SFC/FL[% fl.to %]</name>
+[%- ELSE %]
+	<name>FL[% fl.from %]/[% fl.to %]</name>
+[%- END %]
+	<styleUrl>#msn_ylw-pushpin</styleUrl>
+    <ExtendedData>
+      <Data name="met:groupId"><value>[% id %]</value></Data>
+      [%- IF area.movement; mov = area.movement; %]
+      <Data name="met:movement"><value>[% mov.direction %] [% mov.speed %][% mov.unit %]</value></Data>
+      [%- END %]
+      <Data name="met:objectType"><value>PolyLine</value></Data>
+[%- IF name == "Observation" %]
+      <Data name="met:style:type"><value>Ash cloud FL[% fl.from %]/[% fl.to %] (observed)</value></Data>
+[%- ELSE %]
+      <Data name="met:style:type"><value>Ash cloud FL[% fl.from %]/[% fl.to %] (forecast)</value></Data>
+[%- END %]
+      <Data name="met:info:flightLevel"><value>FL[% fl.from %]/[% fl.to %]</value></Data>
+    </ExtendedData>
+	<Polygon>
+	  <tessellate>1</tessellate>
+	  <outerBoundaryIs>
+	    <LinearRing>
+	      <coordinates>
+[%- UNLESS area.pos.last.lon == area.pos.first.lon 
+        && area.pos.last.lat == area.pos.first.lat;
+        area.pos.push(area.pos.first);
+    END;
+    FOR point IN area.pos %]
+                [% point.lon %],[% point.lat %],0
+[%- END %]
+	      </coordinates>
+	    </LinearRing>
+	  </outerBoundaryIs>
+	</Polygon>
+      </Placemark>
+[% END -%]
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+  <Document>
+    <name>polygon.kml</name>
+    <Snippet>SNIPPET</Snippet>
+    <description>DESCRIPTION</description>
+    <StyleMap id="msn_ylw-pushpin">
+      <Pair>
+	<key>normal</key>
+	<styleUrl>#unselected</styleUrl>
+      </Pair>
+      <Pair>
+	<key>highlight</key>
+	<styleUrl>#selected</styleUrl>
+      </Pair>
+    </StyleMap>
+    <Style id="unselected">
+      <LineStyle>
+	<color>ffff00aa</color>
+	<width>2</width>
+      </LineStyle>
+      <PolyStyle>
+	<color>ff00aa55</color>
+      </PolyStyle>
+    </Style>
+    <Style id="selected">
+      <LineStyle>
+	<color>ff0000aa</color>
+	<width>4</width>
+      </LineStyle>
+      <PolyStyle>
+	<color>ff00aa55</color>
+      </PolyStyle>
+    </Style>
+    <Style id="sh_volcano">
+      <IconStyle>
+	<scale>1.4</scale>
+	<Icon>
+	  <href>http://maps.google.com/mapfiles/kml/shapes/volcano.png</href>
+	</Icon>
+	<hotSpot x="0.5" y="0" xunits="fraction" yunits="fraction"/>
+      </IconStyle>
+      <ListStyle>
+      </ListStyle>
+    </Style>
+    <StyleMap id="msn_volcano">
+      <Pair>
+	<key>normal</key>
+	<styleUrl>#sn_volcano</styleUrl>
+      </Pair>
+      <Pair>
+	<key>highlight</key>
+	<styleUrl>#sh_volcano</styleUrl>
+      </Pair>
+    </StyleMap>
+    <Style id="exampleBalloonStyle">
+      <IconStyle>
+	<scale>1.2</scale>
+	<Icon>
+	  <href>http://maps.google.com/mapfiles/kml/shapes/volcano.png</href>
+	</Icon>
+	<hotSpot x="0.5" y="0" xunits="fraction" yunits="fraction"/>
+      </IconStyle>
+      <BalloonStyle>
+	<text><![CDATA[
+	<b><font size="+1">$[name]</font></b><br/><br/>
+	$[description]<br/>
+	]]></text>
+      </BalloonStyle>
+    </Style>
+    <Style id="sn_volcano">
+      <IconStyle>
+	<scale>1.2</scale>
+	<Icon>
+	  <href>http://maps.google.com/mapfiles/kml/shapes/volcano.png</href>
+	</Icon>
+	<hotSpot x="0.5" y="0" xunits="fraction" yunits="fraction"/>
+      </IconStyle>
+      <ListStyle>
+      </ListStyle>
+    </Style>
+    <Placemark>
+      <name>[% volcano.name %] [% volcano.id %]</name>
+      <Snippet>Snippet</Snippet>
+      <description>[% eruptiondetails %]</description>
+      <styleUrl>#exampleBalloonStyle</styleUrl>
+      <ExtendedData>
+        <Data name="met:groupId"><value>0</value></Data>
+        <Data name="met:objectType"><value>Symbol</value></Data>
+        <Data name="met:style:type"><value>Forecast|Volcanic Eruption</value></Data>
+      </ExtendedData>
+      <Point>
+        <coordinates>[% psn.lon %],[% psn.lat %],0</coordinates>
+      </Point>
+    </Placemark>
+[%- 
+PROCESS folder
+    name = "Observation"
+    current = observation
+    next = forecasts.0;
+FOR fcast IN forecasts;
+    UNLESS fcast.exists("ForecastArea"); NEXT; END;
+    PROCESS folder
+        name = "Forecast +" _ fcast.offset _ "H"
+        current = fcast
+        next  = loop.next;
+END %]
+  </Document>
+</kml>

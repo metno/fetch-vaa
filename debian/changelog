@@ -1,3 +1,10 @@
+metno-fetch-vaa (0.9.14-1) RELEASED; urgency=medium
+
+  * Move metno-vaa-kml into project
+  * Allow OBS VA CLD to have trailing non-standard text
+
+ -- Trond Michelsen <trondm@met.no>  Mon, 15 Jun 2020 08:00:00 +0200
+
 metno-fetch-vaa (0.9.13-1) RELEASED; urgency=medium
 
   * works for Toulouse VAAC

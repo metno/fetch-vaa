@@ -7,6 +7,6 @@ Standards-Version: 3.9.2
 
 Package: metno-fetch-vaa
 Architecture: all
-Depends: ${misc:Depends}, ${python3:Depends}, metno-vaa-kml (>= 0.3.0-2), python3-pyqt5, python3-urllib3
+Depends: ${misc:Depends}, ${python3:Depends}, python3-pyqt5, python3-urllib3, libhtml-tree-perl, libregexp-grammars-perl, libtemplate-perl
 Description: Tool for fetching Volcanic Ash Advisory messages from a Web site.
 
